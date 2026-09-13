@@ -371,8 +371,6 @@
 
     let started = false;
     let hls = null;
-    let audioCtx = null;
-    let pauseWatchdog = null;
 
     function isFullscreen() {
       return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
@@ -407,49 +405,16 @@
     volSlider.addEventListener('input', function () {
       const v = Math.max(0, Math.min(100, parseInt(volSlider.value, 10) || 0)) / 100;
       video.volume = v;
-      if (v > 0 && video.muted) video.muted = false;
     });
-
-    function unlockAudioContext() {
-      if (audioCtx) {
-        if (audioCtx.state === 'suspended') audioCtx.resume().catch(function () {});
-        return;
-      }
-      try {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (!Ctx) return;
-        audioCtx = new Ctx();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        gain.gain.value = 0;
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        audioCtx.resume().catch(function () {});
-      } catch (e) {}
-    }
-
-    function startPauseWatchdog() {
-      if (pauseWatchdog) return;
-      pauseWatchdog = setInterval(function () {
-        if (!started || video.seeking) return;
-        if (video.paused && video.readyState >= 2) {
-          video.play().catch(function () {});
-        }
-      }, 500);
-    }
 
     function startPlayback() {
       if (started) return;
       started = true;
 
-      unlockAudioContext();
-
       startOverlay.classList.add('hidden');
       status.textContent = 'Connecting...';
       status.classList.remove('hidden');
 
-      video.muted = false;
       video.volume = (parseInt(volSlider.value, 10) || 100) / 100;
 
       if (Hls.isSupported()) {
@@ -468,9 +433,7 @@
 
         hls.on(Hls.Events.MANIFEST_PARSED, function () {
           status.classList.add('hidden');
-          video.play().then(function () {
-            startPauseWatchdog();
-          }).catch(function () {
+          video.play().catch(function () {
             status.textContent = 'Tap again to start.';
             status.classList.remove('hidden');
           });
@@ -499,9 +462,7 @@
 
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = streamUrl;
-        video.play().then(function () {
-          startPauseWatchdog();
-        }).catch(function () {
+        video.play().catch(function () {
           status.textContent = 'Tap again to start.';
           status.classList.remove('hidden');
         });
