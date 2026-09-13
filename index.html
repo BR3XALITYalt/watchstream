@@ -4,10 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BR3XALITY Live</title>
-  <style>
-    * { box-sizing: border-box; }
 
-    html, body {
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
       margin: 0;
       padding: 0;
       background: #0d0d0d;
@@ -31,7 +35,10 @@
     }
 
     @media (max-width: 900px) {
-      html, body { overflow: auto; }
+      html,
+      body {
+        overflow: auto;
+      }
 
       .layout {
         grid-template-columns: 1fr;
@@ -417,6 +424,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z"/>
           </svg>
+
           <span class="label">Tap to play live</span>
         </button>
 
@@ -433,7 +441,9 @@
       </div>
 
       <div class="controls">
-        <button id="soundBtn" type="button" hidden>Enable sound</button>
+        <button id="soundBtn" type="button" hidden>
+          Enable sound
+        </button>
 
         <label for="volSlider">Volume</label>
 
@@ -493,7 +503,9 @@
           aria-label="Message"
         >
 
-        <button id="sendBtn" type="submit" disabled>Send</button>
+        <button id="sendBtn" type="submit" disabled>
+          Send
+        </button>
       </form>
     </aside>
   </div>
@@ -507,6 +519,7 @@
     const NICK_MAX = 20;
     const MSG_MAX = 300;
     const MAX_CHAT_LINES = 200;
+
     const CHAT_RECONNECT_MIN = 1000;
     const CHAT_RECONNECT_MAX = 30000;
 
@@ -528,15 +541,11 @@
     let hls = null;
 
     /*
-     * Native video audio only.
+     * Keep audio completely inside the native <video> element.
      *
-     * We intentionally DO NOT use:
-     *   AudioContext
-     *   createMediaElementSource()
-     *
-     * This avoids inserting Web Audio into Firefox's media pipeline.
+     * Do NOT create an AudioContext or MediaElementAudioSourceNode.
+     * This is especially useful for Firefox Android.
      */
-
     video.preservesPitch = true;
     video.volume = 1;
     video.muted = true;
@@ -611,20 +620,26 @@
           document.msExitFullscreen;
 
         if (exit) {
-          exit.call(document).catch?.(function () {});
-        }
-      } else {
-        const req =
-          video.requestFullscreen ||
-          video.webkitRequestFullscreen ||
-          video.msRequestFullscreen;
+          const promise = exit.call(document);
 
-        if (req) {
-          const p = req.call(video);
-
-          if (p && typeof p.catch === 'function') {
-            p.catch(function () {});
+          if (promise && typeof promise.catch === 'function') {
+            promise.catch(function () {});
           }
+        }
+
+        return;
+      }
+
+      const req =
+        video.requestFullscreen ||
+        video.webkitRequestFullscreen ||
+        video.msRequestFullscreen;
+
+      if (req) {
+        const promise = req.call(video);
+
+        if (promise && typeof promise.catch === 'function') {
+          promise.catch(function () {});
         }
       }
     }
@@ -668,55 +683,49 @@
     function createHls() {
       return new Hls({
         /*
-         * MediaMTX is serving LL-HLS.
+         * MediaMTX is serving Low-Latency HLS.
          */
         lowLatencyMode: true,
 
         /*
-         * Target live latency.
+         * Target an actual latency rather than a number of
+         * whole segments.
          *
-         * 2 target segment durations is aggressive enough
-         * for low latency without constantly hugging the edge.
+         * With ~1 second segments, this targets roughly
+         * 0.8 seconds behind the live edge.
          */
-        liveSyncDurationCount: 2,
+        liveSyncDuration: 0.8,
 
         /*
-         * If playback gets this far behind the live edge,
-         * hls.js will move the playback position back toward
-         * the target live position.
+         * If the player falls more than 2.5 seconds behind,
+         * hls.js will move playback back toward live.
          */
-        liveMaxLatencyDurationCount: 5,
+        liveMaxLatencyDuration: 2.5,
 
         /*
-         * Allow a small temporary playback-rate increase
-         * when catching back up after a stall.
+         * Gently accelerate playback when catching up.
          */
-        maxLiveSyncPlaybackRate: 1.2,
+        maxLiveSyncPlaybackRate: 1.1,
 
         /*
-         * Keep the back buffer small. This saves memory and
-         * avoids accumulating old live media on mobile.
+         * Small buffers are intentional for a live stream.
          */
-        backBufferLength: 10,
+        backBufferLength: 5,
+        maxBufferLength: 2,
+        maxMaxBufferLength: 4,
 
         /*
-         * Don't build an unnecessarily large forward buffer.
-         */
-        maxBufferLength: 4,
-        maxMaxBufferLength: 8,
-
-        /*
-         * Let hls.js use its normal worker path.
+         * Keep the transmuxer in a worker.
          */
         enableWorker: true,
 
         /*
-         * Start close to the current live edge.
+         * Begin at the live position.
          */
         startPosition: -1,
 
         /*
-         * The stream is live; don't turn it into an infinite VOD timeline.
+         * This is a live stream, not an infinite VOD timeline.
          */
         liveDurationInfinity: false
       });
@@ -726,13 +735,12 @@
       if (started) return;
 
       started = true;
-
       startOverlay.classList.add('hidden');
 
       setupMediaSession();
 
       /*
-       * Start muted so autoplay is allowed on mobile browsers.
+       * Muted startup allows mobile autoplay policies.
        */
       video.muted = true;
 
@@ -749,20 +757,10 @@
         });
 
         hls.on(Hls.Events.MANIFEST_PARSED, function () {
-          status.classList.add('hidden');
           soundBtn.hidden = false;
+          status.classList.add('hidden');
 
           playNow();
-        });
-
-        hls.on(Hls.Events.LEVEL_LOADED, function (event, data) {
-          if (!data || !data.details) return;
-
-          /*
-           * LL-HLS exposes part information through the playlist.
-           * hls.js handles following the live edge automatically
-           * when lowLatencyMode is enabled.
-           */
         });
 
         hls.on(Hls.Events.ERROR, function (event, data) {
@@ -791,29 +789,33 @@
                 hls.destroy();
                 hls = null;
               }
-
               break;
           }
         });
 
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      } else if (
+        video.canPlayType('application/vnd.apple.mpegurl')
+      ) {
         /*
-         * Safari / native HLS path.
+         * Native HLS path for browsers such as Safari.
          */
         video.src = streamUrl;
 
         video.addEventListener(
           'loadedmetadata',
           function () {
-            status.classList.add('hidden');
             soundBtn.hidden = false;
+            status.classList.add('hidden');
+
             playNow();
           },
           { once: true }
         );
 
       } else {
-        status.textContent = 'HLS is not supported in this browser.';
+        status.textContent =
+          'HLS is not supported in this browser.';
+
         status.classList.remove('hidden');
       }
     }
@@ -822,13 +824,13 @@
 
     soundBtn.addEventListener('click', function () {
       /*
-       * IMPORTANT:
-       * No AudioContext.
-       * No MediaElementAudioSourceNode.
+       * No Web Audio API.
        *
-       * Just switch the native media element from muted -> unmuted.
+       * Just enable the native media element's audio.
        */
-      video.volume = (parseInt(volSlider.value, 10) || 100) / 100;
+      video.volume =
+        (parseInt(volSlider.value, 10) || 100) / 100;
+
       video.muted = false;
 
       const promise = video.play();
@@ -863,13 +865,26 @@
      * ------------------------------
      */
 
-    const chatMessages = document.getElementById('chatMessages');
-    const chatForm = document.getElementById('chatForm');
-    const nickInput = document.getElementById('nickInput');
-    const msgInput = document.getElementById('msgInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const chatDot = document.getElementById('chatDot');
-    const chatStatus = document.getElementById('chatStatus');
+    const chatMessages =
+      document.getElementById('chatMessages');
+
+    const chatForm =
+      document.getElementById('chatForm');
+
+    const nickInput =
+      document.getElementById('nickInput');
+
+    const msgInput =
+      document.getElementById('msgInput');
+
+    const sendBtn =
+      document.getElementById('sendBtn');
+
+    const chatDot =
+      document.getElementById('chatDot');
+
+    const chatStatus =
+      document.getElementById('chatStatus');
 
     let chatWs = null;
     let chatReconnectDelay = CHAT_RECONNECT_MIN;
@@ -887,18 +902,21 @@
       if (state === 'online') {
         chatDot.classList.add('online');
         chatStatus.textContent = 'online';
+
         msgInput.disabled = false;
         sendBtn.disabled = false;
 
       } else if (state === 'connecting') {
         chatDot.classList.remove('online');
         chatStatus.textContent = 'connecting';
+
         msgInput.disabled = true;
         sendBtn.disabled = true;
 
       } else {
         chatDot.classList.remove('online');
         chatStatus.textContent = 'offline';
+
         msgInput.disabled = true;
         sendBtn.disabled = true;
       }
@@ -912,12 +930,18 @@
 
       chatMessages.appendChild(el);
 
-      while (chatMessages.children.length > MAX_CHAT_LINES) {
-        chatMessages.removeChild(chatMessages.firstChild);
+      while (
+        chatMessages.children.length >
+        MAX_CHAT_LINES
+      ) {
+        chatMessages.removeChild(
+          chatMessages.firstChild
+        );
       }
 
       if (nearBottom) {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        chatMessages.scrollTop =
+          chatMessages.scrollHeight;
       }
     }
 
@@ -944,13 +968,15 @@
 
       const tsEl = document.createElement('span');
       tsEl.className = 'ts';
-      tsEl.textContent = new Date(ts).toLocaleTimeString(
-        undefined,
-        {
-          hour: '2-digit',
-          minute: '2-digit'
-        }
-      );
+
+      tsEl.textContent =
+        new Date(ts).toLocaleTimeString(
+          undefined,
+          {
+            hour: '2-digit',
+            minute: '2-digit'
+          }
+        );
 
       line.appendChild(nickEl);
       line.appendChild(textEl);
@@ -1014,10 +1040,13 @@
     function scheduleReconnect() {
       if (chatReconnectTimer) return;
 
-      chatReconnectTimer = setTimeout(function () {
-        chatReconnectTimer = null;
-        connectChat();
-      }, chatReconnectDelay);
+      chatReconnectTimer = setTimeout(
+        function () {
+          chatReconnectTimer = null;
+          connectChat();
+        },
+        chatReconnectDelay
+      );
 
       chatReconnectDelay = Math.min(
         chatReconnectDelay * 2,
@@ -1028,17 +1057,22 @@
     chatForm.addEventListener('submit', function (e) {
       e.preventDefault();
 
-      if (!chatWs || chatWs.readyState !== WebSocket.OPEN) {
+      if (
+        !chatWs ||
+        chatWs.readyState !== WebSocket.OPEN
+      ) {
         return;
       }
 
-      const nick = nickInput.value
-        .trim()
-        .slice(0, NICK_MAX);
+      const nick =
+        nickInput.value
+          .trim()
+          .slice(0, NICK_MAX);
 
-      const text = msgInput.value
-        .trim()
-        .slice(0, MSG_MAX);
+      const text =
+        msgInput.value
+          .trim()
+          .slice(0, MSG_MAX);
 
       if (!nick) {
         nickInput.focus();
@@ -1050,7 +1084,10 @@
       }
 
       try {
-        localStorage.setItem('chat_nick', nick);
+        localStorage.setItem(
+          'chat_nick',
+          nick
+        );
       } catch (err) {}
 
       chatWs.send(
@@ -1068,3 +1105,4 @@
     connectChat();
   </script>
 </body>
+</html>
