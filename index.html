@@ -263,10 +263,7 @@
     const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
     const CHAT_URL = 'wss://chat.br3xality.org/';
 
-    // Drift snap threshold. Higher than before because the buffer is now wider
-    // and hls.js no longer pitch-shifts to catch up. We only snap if the player
-    // falls seriously behind.
-    const MAX_DRIFT = 8;
+    const MAX_DRIFT = 4;
 
     const NICK_MAX = 20;
     const MSG_MAX = 300;
@@ -281,6 +278,11 @@
     const fsBtn = document.getElementById('fsBtn');
     const fsIcon = document.getElementById('fsIcon');
     const status = document.getElementById('status');
+
+    // Preserve pitch across any playback rate changes hls.js applies.
+    video.preservesPitch = true;
+    video.webkitPreservesPitch = true;
+    video.mozPreservesPitch = true;
 
     const ICON_ENTER = 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
     const ICON_EXIT  = 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
@@ -332,18 +334,20 @@
     // ---------------------------------------------------------------------------
     // HLS playback
     //
-    // maxLiveSyncPlaybackRate is capped at 1.0 to disable pitch-shifting.
-    // The buffer windows are widened so hls.js can drift inside them without
-    // needing to adjust playback rate at all.
+    // Middle ground between the tightest (1/2) and the loosest (3/6) config:
+    // - liveSyncDurationCount 2 keeps the player two segments behind live.
+    // - liveMaxLatencyDurationCount 3 caps the drift window at three segments.
+    // - maxLiveSyncPlaybackRate stays at 1.1 with pitch preservation on.
+    // - MAX_DRIFT 4 snaps forward if the buffer ever slips past four seconds.
     // ---------------------------------------------------------------------------
     if (Hls.isSupported()) {
       const hls = new Hls({
         lowLatencyMode: true,
         backBufferLength: 10,
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 6,
+        liveSyncDurationCount: 2,
+        liveMaxLatencyDurationCount: 3,
         liveDurationInfinity: true,
-        maxLiveSyncPlaybackRate: 1.0,
+        maxLiveSyncPlaybackRate: 1.1,
         startPosition: -1
       });
 
@@ -375,8 +379,6 @@
         }
       });
 
-      // Safety snap. With the wider buffer this should rarely fire, but if
-      // the player falls more than MAX_DRIFT seconds behind, jump it forward.
       setInterval(function () {
         if (!hls.latency || video.paused) return;
         if (hls.latency > MAX_DRIFT) {
@@ -385,7 +387,7 @@
             video.currentTime = target;
           }
         }
-      }, 5000);
+      }, 2500);
 
       video.addEventListener('waiting', function () {
         setTimeout(function () {
@@ -395,7 +397,7 @@
               video.currentTime = target;
             }
           }
-        }, 2000);
+        }, 1500);
       });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
