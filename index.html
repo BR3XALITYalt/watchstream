@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +7,7 @@
   <title>BR3XALITY Live</title>
   <style>
     * { box-sizing: border-box; }
+
     html, body {
       margin: 0;
       padding: 0;
@@ -15,6 +17,7 @@
       height: 100%;
       overflow: hidden;
     }
+
     .layout {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 340px;
@@ -27,8 +30,10 @@
       height: 100dvh;
       min-height: 0;
     }
+
     @media (max-width: 900px) {
       html, body { overflow: auto; }
+
       .layout {
         grid-template-columns: 1fr;
         grid-template-rows: auto minmax(300px, 1fr);
@@ -39,12 +44,14 @@
         min-height: 100dvh;
       }
     }
+
     .video-col {
       display: flex;
       flex-direction: column;
       min-width: 0;
       min-height: 0;
     }
+
     .player {
       position: relative;
       line-height: 0;
@@ -54,6 +61,7 @@
       overflow: hidden;
       aspect-ratio: 16 / 9;
     }
+
     video {
       width: 100%;
       height: 100%;
@@ -62,9 +70,11 @@
       display: block;
       object-fit: contain;
     }
+
     video:fullscreen {
       border-radius: 0;
     }
+
     .start-overlay {
       position: absolute;
       inset: 0;
@@ -82,18 +92,24 @@
       text-align: center;
       z-index: 5;
     }
-    .start-overlay.hidden { display: none; }
+
+    .start-overlay.hidden {
+      display: none;
+    }
+
     .start-overlay svg {
       width: 72px;
       height: 72px;
       fill: #e5e5e5;
       opacity: 0.9;
     }
+
     .start-overlay .label {
       font-size: 15px;
       font-weight: 500;
       letter-spacing: 0.02em;
     }
+
     .fs-btn {
       position: absolute;
       right: 10px;
@@ -112,17 +128,23 @@
       transition: background 0.15s ease;
       z-index: 6;
     }
-    .fs-btn:hover { background: rgba(0, 0, 0, 0.8); }
+
+    .fs-btn:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+
     .fs-btn:focus-visible {
       outline: 2px solid #4d6bfe;
       outline-offset: 2px;
     }
+
     .fs-btn svg {
       width: 20px;
       height: 20px;
       fill: currentColor;
       pointer-events: none;
     }
+
     .controls {
       display: flex;
       align-items: center;
@@ -134,11 +156,13 @@
       border-radius: 8px;
       flex-wrap: wrap;
     }
+
     .controls label {
       font-size: 12px;
       color: #888;
       flex: 0 0 auto;
     }
+
     .controls input[type="range"] {
       flex: 1;
       min-width: 100px;
@@ -149,6 +173,7 @@
       border-radius: 2px;
       outline: none;
     }
+
     .controls input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
@@ -158,6 +183,7 @@
       border-radius: 50%;
       cursor: pointer;
     }
+
     .controls input[type="range"]::-moz-range-thumb {
       width: 16px;
       height: 16px;
@@ -166,10 +192,12 @@
       border-radius: 50%;
       cursor: pointer;
     }
+
     .controls input[type="range"]:focus-visible {
       outline: 2px solid #4d6bfe;
       outline-offset: 2px;
     }
+
     .controls button {
       background: #4d6bfe;
       color: #fff;
@@ -182,12 +210,20 @@
       font-family: inherit;
       flex: 0 0 auto;
     }
-    .controls button:hover { background: #3a55e0; }
+
+    .controls button:hover {
+      background: #3a55e0;
+    }
+
     .controls button:focus-visible {
       outline: 2px solid #4d6bfe;
       outline-offset: 2px;
     }
-    .controls button[hidden] { display: none; }
+
+    .controls button[hidden] {
+      display: none;
+    }
+
     .status {
       color: #888;
       font-size: 14px;
@@ -195,7 +231,10 @@
       text-align: center;
       line-height: 1.4;
     }
-    .status.hidden { display: none; }
+
+    .status.hidden {
+      display: none;
+    }
 
     .chat {
       background: #151515;
@@ -206,6 +245,7 @@
       min-height: 0;
       overflow: hidden;
     }
+
     .chat-header {
       display: flex;
       align-items: center;
@@ -218,6 +258,7 @@
       color: #e5e5e5;
       flex: 0 0 auto;
     }
+
     .chat-status {
       display: flex;
       align-items: center;
@@ -226,6 +267,7 @@
       font-weight: 400;
       color: #666;
     }
+
     .chat-dot {
       width: 8px;
       height: 8px;
@@ -233,7 +275,11 @@
       background: #444;
       transition: background 0.2s ease;
     }
-    .chat-dot.online { background: #22c55e; }
+
+    .chat-dot.online {
+      background: #22c55e;
+    }
+
     .chat-messages {
       flex: 1 1 auto;
       min-height: 0;
@@ -245,37 +291,50 @@
       word-wrap: break-word;
       overflow-wrap: anywhere;
     }
-    .chat-messages::-webkit-scrollbar { width: 8px; }
-    .chat-messages::-webkit-scrollbar-track { background: #151515; }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+      background: #151515;
+    }
+
     .chat-messages::-webkit-scrollbar-thumb {
       background: #2e2e2e;
       border-radius: 4px;
     }
+
     .chat-line {
       margin: 0 0 6px;
       line-height: 1.5;
     }
+
     .chat-line .nick {
       color: #4d6bfe;
       font-weight: 600;
       margin-right: 4px;
     }
+
     .chat-line .nick::after {
       content: ":";
       color: #555;
       margin-left: 1px;
       font-weight: 400;
     }
+
     .chat-line .ts {
       color: #4a4a4a;
       font-size: 11px;
       margin-left: 6px;
     }
+
     .chat-line.system {
       color: #666;
       font-style: italic;
       font-size: 12px;
     }
+
     .chat-form {
       display: flex;
       gap: 6px;
@@ -284,6 +343,7 @@
       background: #121212;
       flex: 0 0 auto;
     }
+
     .chat-form input {
       background: #1e1e1e;
       border: 1px solid #2e2e2e;
@@ -294,12 +354,20 @@
       font-family: inherit;
       min-width: 0;
     }
+
     .chat-form input:focus {
       outline: none;
       border-color: #4d6bfe;
     }
-    .chat-form input.nick { flex: 0 0 72px; }
-    .chat-form input.msg { flex: 1; }
+
+    .chat-form input.nick {
+      flex: 0 0 72px;
+    }
+
+    .chat-form input.msg {
+      flex: 1;
+    }
+
     .chat-form button {
       background: #4d6bfe;
       color: #fff;
@@ -311,61 +379,128 @@
       cursor: pointer;
       transition: background 0.15s ease;
     }
-    .chat-form button:hover { background: #3a55e0; }
+
+    .chat-form button:hover {
+      background: #3a55e0;
+    }
+
     .chat-form button:disabled {
       background: #262626;
       color: #555;
       cursor: not-allowed;
     }
+
     .chat-form button:focus-visible {
       outline: 2px solid #4d6bfe;
       outline-offset: 2px;
     }
   </style>
 </head>
+
 <body>
   <div class="layout">
     <div class="video-col">
       <div class="player">
-        <video id="video" playsinline preload="none" muted disableremoteplayback></video>
-        <button class="start-overlay" id="startOverlay" type="button" aria-label="Start live stream">
+        <video
+          id="video"
+          playsinline
+          preload="none"
+          muted
+          disableremoteplayback
+        ></video>
+
+        <button
+          class="start-overlay"
+          id="startOverlay"
+          type="button"
+          aria-label="Start live stream"
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z"/>
           </svg>
           <span class="label">Tap to play live</span>
         </button>
-        <button class="fs-btn" id="fsBtn" aria-label="Toggle fullscreen" type="button">
+
+        <button
+          class="fs-btn"
+          id="fsBtn"
+          aria-label="Toggle fullscreen"
+          type="button"
+        >
           <svg id="fsIcon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
           </svg>
         </button>
       </div>
+
       <div class="controls">
         <button id="soundBtn" type="button" hidden>Enable sound</button>
+
         <label for="volSlider">Volume</label>
-        <input type="range" id="volSlider" min="0" max="100" value="100" step="1" aria-label="Volume">
+
+        <input
+          type="range"
+          id="volSlider"
+          min="0"
+          max="100"
+          value="100"
+          step="1"
+          aria-label="Volume"
+        >
       </div>
+
       <div class="status" id="status"></div>
     </div>
 
     <aside class="chat">
       <div class="chat-header">
         <span>Chat</span>
+
         <span class="chat-status">
           <span class="chat-dot" id="chatDot"></span>
           <span id="chatStatus">connecting</span>
         </span>
       </div>
-      <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Chat messages"></div>
-      <form class="chat-form" id="chatForm" autocomplete="off">
-        <input class="nick" id="nickInput" type="text" placeholder="nick" maxlength="20" aria-label="Nickname">
-        <input class="msg" id="msgInput" type="text" placeholder="message" maxlength="300" disabled aria-label="Message">
+
+      <div
+        class="chat-messages"
+        id="chatMessages"
+        role="log"
+        aria-live="polite"
+        aria-label="Chat messages"
+      ></div>
+
+      <form
+        class="chat-form"
+        id="chatForm"
+        autocomplete="off"
+      >
+        <input
+          class="nick"
+          id="nickInput"
+          type="text"
+          placeholder="nick"
+          maxlength="20"
+          aria-label="Nickname"
+        >
+
+        <input
+          class="msg"
+          id="msgInput"
+          type="text"
+          placeholder="message"
+          maxlength="300"
+          disabled
+          aria-label="Message"
+        >
+
         <button id="sendBtn" type="submit" disabled>Send</button>
       </form>
     </aside>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
+
   <script>
     const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
     const CHAT_URL = 'wss://chat.br3xality.org/';
@@ -384,33 +519,36 @@
     const volSlider = document.getElementById('volSlider');
     const soundBtn = document.getElementById('soundBtn');
 
-    let audioCtx = null;
-    let audioSrc = null;
+    const ICON_ENTER =
+      'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
 
-    function ensureAudioContext() {
-      if (audioCtx) return audioCtx;
-      try {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (!Ctx) return null;
-        audioCtx = new Ctx();
-        audioSrc = audioCtx.createMediaElementSource(video);
-        audioSrc.connect(audioCtx.destination);
-      } catch (e) {
-        audioCtx = null;
-        audioSrc = null;
-      }
-      return audioCtx;
-    }
+    const ICON_EXIT =
+      'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
 
-    function resumeAudioContext() {
-      if (!audioCtx) return;
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(function () {});
-      }
-    }
+    let started = false;
+    let hls = null;
+
+    /*
+     * Native video audio only.
+     *
+     * We intentionally DO NOT use:
+     *   AudioContext
+     *   createMediaElementSource()
+     *
+     * This avoids inserting Web Audio into Firefox's media pipeline.
+     */
+
+    video.preservesPitch = true;
+    video.volume = 1;
+    video.muted = true;
+
+    try {
+      video.disableRemotePlayback = true;
+    } catch (e) {}
 
     function setupMediaSession() {
       if (!('mediaSession' in navigator)) return;
+
       try {
         if (window.MediaMetadata) {
           navigator.mediaSession.metadata = new MediaMetadata({
@@ -420,17 +558,21 @@
           });
         }
       } catch (e) {}
+
       try {
         navigator.mediaSession.setActionHandler('play', function () {
           video.play().catch(function () {});
         });
       } catch (e) {}
+
       try {
         navigator.mediaSession.setActionHandler('pause', function () {});
       } catch (e) {}
+
       try {
         navigator.mediaSession.setActionHandler('stop', function () {});
       } catch (e) {}
+
       try {
         navigator.mediaSession.setActionHandler('seekbackward', function () {});
         navigator.mediaSession.setActionHandler('seekforward', function () {});
@@ -440,45 +582,59 @@
 
     video.addEventListener('playing', function () {
       if ('mediaSession' in navigator) {
-        try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+        try {
+          navigator.mediaSession.playbackState = 'playing';
+        } catch (e) {}
       }
     });
+
     video.addEventListener('pause', function () {
       if ('mediaSession' in navigator) {
-        try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {}
+        try {
+          navigator.mediaSession.playbackState = 'paused';
+        } catch (e) {}
       }
     });
 
-    video.preservesPitch = true;
-    video.volume = 1;
-    video.muted = true;
-    try { video.disableRemotePlayback = true; } catch (e) {}
-
-    const ICON_ENTER = 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
-    const ICON_EXIT  = 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
-
-    let started = false;
-    let hls = null;
-
     function isFullscreen() {
-      return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+      return !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
+      );
     }
 
     function toggleFullscreen() {
       if (isFullscreen()) {
-        const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-        if (exit) exit.call(document);
+        const exit =
+          document.exitFullscreen ||
+          document.webkitExitFullscreen ||
+          document.msExitFullscreen;
+
+        if (exit) {
+          exit.call(document).catch?.(function () {});
+        }
       } else {
-        const req = video.requestFullscreen || video.webkitRequestFullscreen || video.msRequestFullscreen;
+        const req =
+          video.requestFullscreen ||
+          video.webkitRequestFullscreen ||
+          video.msRequestFullscreen;
+
         if (req) {
           const p = req.call(video);
-          if (p && typeof p.catch === 'function') p.catch(function () {});
+
+          if (p && typeof p.catch === 'function') {
+            p.catch(function () {});
+          }
         }
       }
     }
 
     function updateFsIcon() {
-      fsIcon.firstElementChild.setAttribute('d', isFullscreen() ? ICON_EXIT : ICON_ENTER);
+      fsIcon.firstElementChild.setAttribute(
+        'd',
+        isFullscreen() ? ICON_EXIT : ICON_ENTER
+      );
     }
 
     document.addEventListener('fullscreenchange', updateFsIcon);
@@ -491,83 +647,172 @@
     });
 
     volSlider.addEventListener('input', function () {
-      const v = Math.max(0, Math.min(100, parseInt(volSlider.value, 10) || 0)) / 100;
-      video.volume = v;
+      const value = parseInt(volSlider.value, 10);
+      const volume = Math.max(0, Math.min(100, value || 0)) / 100;
+
+      video.volume = volume;
     });
 
     function playNow() {
-      const p = video.play();
-      if (p && typeof p.catch === 'function') {
-        p.catch(function () {
+      const promise = video.play();
+
+      if (promise && typeof promise.catch === 'function') {
+        promise.catch(function () {
           status.textContent = 'Tap again to start.';
           status.classList.remove('hidden');
         });
       }
-      return p;
+
+      return promise;
+    }
+
+    function createHls() {
+      return new Hls({
+        /*
+         * MediaMTX is serving LL-HLS.
+         */
+        lowLatencyMode: true,
+
+        /*
+         * Target live latency.
+         *
+         * 2 target segment durations is aggressive enough
+         * for low latency without constantly hugging the edge.
+         */
+        liveSyncDurationCount: 2,
+
+        /*
+         * If playback gets this far behind the live edge,
+         * hls.js will move the playback position back toward
+         * the target live position.
+         */
+        liveMaxLatencyDurationCount: 5,
+
+        /*
+         * Allow a small temporary playback-rate increase
+         * when catching back up after a stall.
+         */
+        maxLiveSyncPlaybackRate: 1.2,
+
+        /*
+         * Keep the back buffer small. This saves memory and
+         * avoids accumulating old live media on mobile.
+         */
+        backBufferLength: 10,
+
+        /*
+         * Don't build an unnecessarily large forward buffer.
+         */
+        maxBufferLength: 4,
+        maxMaxBufferLength: 8,
+
+        /*
+         * Let hls.js use its normal worker path.
+         */
+        enableWorker: true,
+
+        /*
+         * Start close to the current live edge.
+         */
+        startPosition: -1,
+
+        /*
+         * The stream is live; don't turn it into an infinite VOD timeline.
+         */
+        liveDurationInfinity: false
+      });
     }
 
     function startPlayback() {
       if (started) return;
+
       started = true;
 
       startOverlay.classList.add('hidden');
 
       setupMediaSession();
-      ensureAudioContext();
-      resumeAudioContext();
 
+      /*
+       * Start muted so autoplay is allowed on mobile browsers.
+       */
       video.muted = true;
 
       status.textContent = 'Connecting...';
       status.classList.remove('hidden');
 
       if (Hls.isSupported()) {
-        hls = new Hls({
-          lowLatencyMode: false,
-          backBufferLength: 30,
-          liveSyncDurationCount: 3,
-          liveMaxLatencyDurationCount: 10,
-          liveDurationInfinity: true,
-          enableWorker: false,
-          startPosition: -1
-        });
+        hls = createHls();
 
         hls.attachMedia(video);
-        hls.loadSource(streamUrl);
 
-        playNow();
+        hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+          hls.loadSource(streamUrl);
+        });
 
         hls.on(Hls.Events.MANIFEST_PARSED, function () {
           status.classList.add('hidden');
           soundBtn.hidden = false;
+
+          playNow();
+        });
+
+        hls.on(Hls.Events.LEVEL_LOADED, function (event, data) {
+          if (!data || !data.details) return;
+
+          /*
+           * LL-HLS exposes part information through the playlist.
+           * hls.js handles following the live edge automatically
+           * when lowLatencyMode is enabled.
+           */
         });
 
         hls.on(Hls.Events.ERROR, function (event, data) {
-          if (!data.fatal) return;
+          if (!data || !data.fatal) return;
+
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               status.textContent = 'Network error. Retrying...';
               status.classList.remove('hidden');
+
               hls.startLoad();
               break;
+
             case Hls.ErrorTypes.MEDIA_ERROR:
               status.textContent = 'Media error. Recovering...';
               status.classList.remove('hidden');
+
               hls.recoverMediaError();
               break;
+
             default:
               status.textContent = 'Playback failed.';
               status.classList.remove('hidden');
-              hls.destroy();
-              hls = null;
+
+              if (hls) {
+                hls.destroy();
+                hls = null;
+              }
+
               break;
           }
         });
 
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        /*
+         * Safari / native HLS path.
+         */
         video.src = streamUrl;
-        playNow();
-        soundBtn.hidden = false;
+
+        video.addEventListener(
+          'loadedmetadata',
+          function () {
+            status.classList.add('hidden');
+            soundBtn.hidden = false;
+            playNow();
+          },
+          { once: true }
+        );
+
       } else {
         status.textContent = 'HLS is not supported in this browser.';
         status.classList.remove('hidden');
@@ -577,20 +822,47 @@
     startOverlay.addEventListener('click', startPlayback);
 
     soundBtn.addEventListener('click', function () {
-      resumeAudioContext();
-      video.muted = false;
+      /*
+       * IMPORTANT:
+       * No AudioContext.
+       * No MediaElementAudioSourceNode.
+       *
+       * Just switch the native media element from muted -> unmuted.
+       */
       video.volume = (parseInt(volSlider.value, 10) || 100) / 100;
-      playNow();
+      video.muted = false;
+
+      const promise = video.play();
+
+      if (promise && typeof promise.catch === 'function') {
+        promise.catch(function () {});
+      }
+
       soundBtn.hidden = true;
+
       if ('mediaSession' in navigator) {
-        try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+        try {
+          navigator.mediaSession.playbackState = 'playing';
+        } catch (e) {}
       }
     });
 
     video.addEventListener('click', function () {
-      if (!started) { startPlayback(); return; }
-      if (video.paused) playNow();
+      if (!started) {
+        startPlayback();
+        return;
+      }
+
+      if (video.paused) {
+        playNow();
+      }
     });
+
+    /*
+     * ------------------------------
+     * Chat
+     * ------------------------------
+     */
 
     const chatMessages = document.getElementById('chatMessages');
     const chatForm = document.getElementById('chatForm');
@@ -606,7 +878,10 @@
 
     try {
       const saved = localStorage.getItem('chat_nick');
-      if (saved) nickInput.value = saved.slice(0, NICK_MAX);
+
+      if (saved) {
+        nickInput.value = saved.slice(0, NICK_MAX);
+      }
     } catch (e) {}
 
     function setChatState(state) {
@@ -615,11 +890,13 @@
         chatStatus.textContent = 'online';
         msgInput.disabled = false;
         sendBtn.disabled = false;
+
       } else if (state === 'connecting') {
         chatDot.classList.remove('online');
         chatStatus.textContent = 'connecting';
         msgInput.disabled = true;
         sendBtn.disabled = true;
+
       } else {
         chatDot.classList.remove('online');
         chatStatus.textContent = 'offline';
@@ -629,18 +906,28 @@
     }
 
     function pushLine(el) {
-      const nearBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 40;
+      const nearBottom =
+        chatMessages.scrollHeight -
+        chatMessages.scrollTop -
+        chatMessages.clientHeight < 40;
+
       chatMessages.appendChild(el);
+
       while (chatMessages.children.length > MAX_CHAT_LINES) {
         chatMessages.removeChild(chatMessages.firstChild);
       }
-      if (nearBottom) chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      if (nearBottom) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
     }
 
     function appendSystem(text) {
       const line = document.createElement('div');
+
       line.className = 'chat-line system';
       line.textContent = text;
+
       pushLine(line);
     }
 
@@ -658,16 +945,24 @@
 
       const tsEl = document.createElement('span');
       tsEl.className = 'ts';
-      tsEl.textContent = new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      tsEl.textContent = new Date(ts).toLocaleTimeString(
+        undefined,
+        {
+          hour: '2-digit',
+          minute: '2-digit'
+        }
+      );
 
       line.appendChild(nickEl);
       line.appendChild(textEl);
       line.appendChild(tsEl);
+
       pushLine(line);
     }
 
     function connectChat() {
       setChatState('connecting');
+
       try {
         chatWs = new WebSocket(CHAT_URL);
       } catch (e) {
@@ -677,16 +972,31 @@
 
       chatWs.onopen = function () {
         chatReconnectDelay = CHAT_RECONNECT_MIN;
+
         setChatState('online');
         appendSystem('connected');
       };
 
       chatWs.onmessage = function (ev) {
         let m;
-        try { m = JSON.parse(ev.data); } catch (err) { return; }
-        if (!m || typeof m.type !== 'string') return;
+
+        try {
+          m = JSON.parse(ev.data);
+        } catch (err) {
+          return;
+        }
+
+        if (!m || typeof m.type !== 'string') {
+          return;
+        }
+
         if (m.type === 'msg') {
-          appendMessage(String(m.nick || ''), String(m.text || ''), Number(m.ts) || Date.now());
+          appendMessage(
+            String(m.nick || ''),
+            String(m.text || ''),
+            Number(m.ts) || Date.now()
+          );
+
         } else if (m.type === 'system') {
           appendSystem(String(m.text || ''));
         }
@@ -694,6 +1004,7 @@
 
       chatWs.onclose = function () {
         chatWs = null;
+
         setChatState('offline');
         scheduleReconnect();
       };
@@ -703,25 +1014,54 @@
 
     function scheduleReconnect() {
       if (chatReconnectTimer) return;
+
       chatReconnectTimer = setTimeout(function () {
         chatReconnectTimer = null;
         connectChat();
       }, chatReconnectDelay);
-      chatReconnectDelay = Math.min(chatReconnectDelay * 2, CHAT_RECONNECT_MAX);
+
+      chatReconnectDelay = Math.min(
+        chatReconnectDelay * 2,
+        CHAT_RECONNECT_MAX
+      );
     }
 
     chatForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      if (!chatWs || chatWs.readyState !== WebSocket.OPEN) return;
 
-      const nick = nickInput.value.trim().slice(0, NICK_MAX);
-      const text = msgInput.value.trim().slice(0, MSG_MAX);
-      if (!nick) { nickInput.focus(); return; }
-      if (!text) return;
+      if (!chatWs || chatWs.readyState !== WebSocket.OPEN) {
+        return;
+      }
 
-      try { localStorage.setItem('chat_nick', nick); } catch (err) {}
+      const nick = nickInput.value
+        .trim()
+        .slice(0, NICK_MAX);
 
-      chatWs.send(JSON.stringify({ type: 'msg', nick: nick, text: text }));
+      const text = msgInput.value
+        .trim()
+        .slice(0, MSG_MAX);
+
+      if (!nick) {
+        nickInput.focus();
+        return;
+      }
+
+      if (!text) {
+        return;
+      }
+
+      try {
+        localStorage.setItem('chat_nick', nick);
+      } catch (err) {}
+
+      chatWs.send(
+        JSON.stringify({
+          type: 'msg',
+          nick: nick,
+          text: text
+        })
+      );
+
       msgInput.value = '';
       msgInput.focus();
     });
@@ -730,3 +1070,4 @@
   </script>
 </body>
 </html>
+```
