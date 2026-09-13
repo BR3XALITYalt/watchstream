@@ -197,7 +197,6 @@
     }
     .status.hidden { display: none; }
 
-    /* ===== Log overlay ===== */
     .log-overlay {
       position: fixed;
       left: 8px;
@@ -277,6 +276,7 @@
     }
     .log-line.err { color: #ff7b7b; }
     .log-line.warn { color: #f5c96b; }
+    .log-line.ok { color: #22c55e; font-weight: 600; }
 
     .chat {
       background: #151515;
@@ -408,7 +408,7 @@
   <div class="layout">
     <div class="video-col">
       <div class="player">
-        <video id="video" playsinline preload="none" muted></video>
+        <video id="video" playsinline preload="none" muted disableremoteplayback></video>
         <button class="start-overlay" id="startOverlay" type="button" aria-label="Start live stream">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z"/>
@@ -446,7 +446,6 @@
     </aside>
   </div>
 
-  <!-- ===== Log overlay ===== -->
   <div class="log-overlay" id="logOverlay">
     <div class="log-head">
       <span class="log-title" id="logTitle">Logs (tap to toggle)</span>
@@ -495,13 +494,12 @@
     }
 
     function renderLog() {
-      // Only render the tail so it stays cheap.
       const tail = logLines.slice(-200);
       let html = '';
       for (let i = 0; i < tail.length; i++) {
         const L = tail[i];
         const esc = L.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const cls = L.kind === 'err' ? ' err' : (L.kind === 'warn' ? ' warn' : '');
+        const cls = L.kind === 'err' ? ' err' : (L.kind === 'warn' ? ' warn' : (L.kind === 'ok' ? ' ok' : ''));
         html += '<div class="log-line' + cls + '">' + esc + '</div>';
       }
       logBody.innerHTML = html;
@@ -513,7 +511,6 @@
       renderLog();
     }
 
-    // Intercept console so logs go to both the overlay and the dev console.
     (function () {
       const origLog = console.log;
       const origErr = console.error;
@@ -594,6 +591,93 @@
       }
     });
 
+    // ===== Web Audio setup (routing audio through AudioContext bypasses
+    // HTMLMediaElement autoplay policy on Firefox Android) =====
+    let audioCtx = null;
+    let audioSrc = null;
+
+    function ensureAudioContext() {
+      if (audioCtx) return audioCtx;
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        audioCtx = new Ctx();
+        audioSrc = audioCtx.createMediaElementSource(video);
+        audioSrc.connect(audioCtx.destination);
+        console.log('[web audio] ctx created, state=' + audioCtx.state);
+      } catch (e) {
+        console.error('[web audio] setup failed: ' + e.message);
+        audioCtx = null;
+        audioSrc = null;
+      }
+      return audioCtx;
+    }
+
+    function resumeAudioContext() {
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(function () {
+          console.log('[web audio] ctx resumed, state=' + audioCtx.state);
+        }).catch(function (e) {
+          console.error('[web audio] resume failed: ' + e.message);
+        });
+      }
+    }
+
+    // ===== MediaSession setup =====
+    // Register our own session so Firefox Android stops treating OS
+    // pause signals as authoritative, and swallow pause/stop requests.
+    function setupMediaSession() {
+      if (!('mediaSession' in navigator)) {
+        console.log('[media session] not supported');
+        return;
+      }
+      try {
+        if (window.MediaMetadata) {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: 'BR3XALITY Live',
+            artist: 'BR3XALITY',
+            album: 'Live Stream'
+          });
+        }
+      } catch (e) {
+        console.warn('[media session] metadata failed: ' + e.message);
+      }
+      try {
+        navigator.mediaSession.setActionHandler('play', function () {
+          console.log('[media session] play requested');
+          video.play().catch(function () {});
+        });
+      } catch (e) {}
+      try {
+        navigator.mediaSession.setActionHandler('pause', function () {
+          console.log('[media session] pause request IGNORED (live stream)');
+        });
+      } catch (e) {}
+      try {
+        navigator.mediaSession.setActionHandler('stop', function () {
+          console.log('[media session] stop request IGNORED');
+        });
+      } catch (e) {}
+      try {
+        navigator.mediaSession.setActionHandler('seekbackward', function () {});
+        navigator.mediaSession.setActionHandler('seekforward', function () {});
+        navigator.mediaSession.setActionHandler('seekto', function () {});
+      } catch (e) {}
+      console.log('[media session] configured');
+    }
+
+    video.addEventListener('playing', function () {
+      if ('mediaSession' in navigator) {
+        try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+      }
+    });
+    video.addEventListener('pause', function () {
+      if ('mediaSession' in navigator) {
+        try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {}
+      }
+    });
+
     // ===== Diagnostics =====
     (function () {
       const origPause = HTMLMediaElement.prototype.pause;
@@ -641,6 +725,7 @@
     video.preservesPitch = true;
     video.volume = 1;
     video.muted = true;
+    try { video.disableRemotePlayback = true; } catch (e) {}
 
     const ICON_ENTER = 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
     const ICON_EXIT  = 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
@@ -700,6 +785,12 @@
       started = true;
 
       startOverlay.classList.add('hidden');
+
+      // These two lines are the key: satisfy both autoplay gates inside
+      // the tap that started playback.
+      setupMediaSession();
+      ensureAudioContext();
+      resumeAudioContext();
 
       video.muted = true;
 
@@ -762,10 +853,17 @@
     startOverlay.addEventListener('click', startPlayback);
 
     soundBtn.addEventListener('click', function () {
+      // Resume audio context inside the same gesture.
+      resumeAudioContext();
+
       video.muted = false;
       video.volume = (parseInt(volSlider.value, 10) || 100) / 100;
       playNow();
       soundBtn.hidden = true;
+
+      if ('mediaSession' in navigator) {
+        try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+      }
     });
 
     video.addEventListener('click', function () {
