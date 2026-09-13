@@ -1,217 +1,128 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BR3XALITY Live</title><style>* { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #0d0d0d;
-      color: #e5e5e5;
-      font-family: system-ui, -apple-system, sans-serif;
-      height: 100%;
-      overflow: hidden;
-    }
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 340px;
-      gap: 16px;
-      width: 100%;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 16px;
-      height: 100vh;
-      height: 100dvh;
-      min-height: 0;
-    }
-    @media (max-width: 900px) {
-      html, body { overflow: auto; }
-      .layout {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(300px, 1fr);
-        gap: 12px;
-        padding: 12px;
-        height: auto;
-        min-height: 100vh;
-        min-height: 100dvh;
-      }
-    }
-    .video-col {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      min-height: 0;
-    }
-    .player {
-      position: relative;
-      line-height: 0;
-      flex: 0 0 auto;
-    }
-    video {
-      width: 100%;
-      background: #000;
-      border-radius: 8px;
-      cursor: pointer;
-      display: block;
-    }
-    video:fullscreen {
-      border-radius: 0;
-      object-fit: contain;
-    }
-    .fs-btn {
-      position: absolute;
-      right: 10px;
-      bottom: 10px;
-      width: 40px;
-      height: 40px;
-      padding: 0;
-      border: none;
-      border-radius: 6px;
-      background: rgba(0, 0, 0, 0.55);
-      color: #fff;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.15s ease;
-    }
-    .fs-btn:hover { background: rgba(0, 0, 0, 0.8); }
-    .fs-btn:focus-visible {
-      outline: 2px solid #4d6bfe;
-      outline-offset: 2px;
-    }
-    .fs-btn svg {
-      width: 20px;
-      height: 20px;
-      fill: currentColor;
-      pointer-events: none;
-    }
-    .status {
-      color: #888;
-      font-size: 14px;
-      margin-top: 8px;
-      text-align: center;
-      line-height: 1.4;
-    }
-    .status.hidden { display: none; }
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BR3XALITY debug</title>
+<style>
+  html, body { margin: 0; background: #0d0d0d; color: #eee; font: 13px system-ui; }
+  video { width: 100%; background: #000; display: block; }
+  #hud {
+    font: 11px ui-monospace, monospace;
+    white-space: pre;
+    padding: 8px 10px;
+    background: #111;
+    color: #9ae6a0;
+    border-top: 1px solid #222;
+    line-height: 1.45;
+    max-height: 55vh;
+    overflow: auto;
+  }
+  #hud .ev { color: #f5c96b; }
+  #hud .warn { color: #ff7b7b; }
+</style>
+</head>
+<body>
+<video id="v" autoplay muted playsinline></video>
+<div id="hud">booting...</div>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script>
+var v = document.getElementById('v');
+var hud = document.getElementById('hud');
+var lines = [];
+var t0 = performance.now();
 
-    .chat {
-      background: #151515;
-      border: 1px solid #262626;
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      overflow: hidden;
-    }
-    .chat-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 14px;
-      border-bottom: 1px solid #262626;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      color: #e5e5e5;
-      flex: 0 0 auto;
-    }
-    .chat-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-weight: 400;
-      color: #666;
-    }
-    .chat-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #444;
-      transition: background 0.2s ease;
-    }
-    .chat-dot.online { background: #22c55e; }
-    .chat-messages {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 10px 14px;
-      font-size: 14px;
-      line-height: 1.5;
-      color: #d4d4d4;
-      word-wrap: break-word;
-      overflow-wrap: anywhere;
-    }
-    .chat-messages::-webkit-scrollbar { width: 8px; }
-    .chat-messages::-webkit-scrollbar-track { background: #151515; }
-    .chat-messages::-webkit-scrollbar-thumb {
-      background: #2e2e2e;
-      border-radius: 4px;
-    }
-    .chat-line {
-      margin: 0 0 6px;
-      line-height: 1.5;
-    }
-    .chat-line .nick {
-      color: #4d6bfe;
-      font-weight: 600;
-      margin-right: 4px;
-    }
-    .chat-line .nick::after {
-      content: ":";
-      color: #555;
-      margin-left: 1px;
-      font-weight: 400;
-    }
-    .chat-line .ts {
-      color: #4a4a4a;
-      font-size: 11px;
-      margin-left: 6px;
-    }
-    .chat-line.system {
-      color: #666;
-      font-style: italic;
-      font-size: 12px;
-    }
-    .chat-form {
-      display: flex;
-      gap: 6px;
-      padding: 10px;
-      border-top: 1px solid #262626;
-      background: #121212;
-      flex: 0 0 auto;
-    }
-    .chat-form input {
-      background: #1e1e1e;
-      border: 1px solid #2e2e2e;
-      border-radius: 6px;
-      padding: 8px 10px;
-      color: #e5e5e5;
-      font-size: 14px;
-      font-family: inherit;
-      min-width: 0;
-    }
-    .chat-form input:focus {
-      outline: none;
-      border-color: #4d6bfe;
-    }
-    .chat-form input.nick { flex: 0 0 72px; }
-    .chat-form input.msg { flex: 1; }
-    .chat-form button {
-      background: #4d6bfe;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 0 14px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-    .chat-form button:hover { background: #3a55e0; }
-    .chat-form button:disabled {
-      background: #262626;
-      color: #555;
-      cursor: not-allowed;
-    }
-    .chat-form button:focus-visible {
-      outline: 2px solid #4d6bfe;
-      outline-offset: 2px;
-    }</style><div class="layout"><div class="video-col"><div class="player"><video id="video" autoplay muted playsinline></video><button class="fs-btn" id="fsBtn" aria-label="Toggle fullscreen" type="button"><svg id="fsIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button></div><div class="status" id="status">Connecting...</div></div><aside class="chat"><div class="chat-header"><span>Chat</span> <span class="chat-status"><span class="chat-dot" id="chatDot"></span> <span id="chatStatus">connecting</span></span></div><div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Chat messages"></div><form class="chat-form" id="chatForm" autocomplete="off"><input class="nick" id="nickInput" placeholder="nick" maxlength="20" aria-label="Nickname"> <input class="msg" id="msgInput" placeholder="message" maxlength="300" disabled aria-label="Message"> <button id="sendBtn" disabled>Send</button></form></aside></div><script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script><script>const streamUrl="https://rtmp.br3xality.org/live/index.m3u8",CHAT_URL="wss://chat.br3xality.org/",NICK_MAX=20,MSG_MAX=300,MAX_CHAT_LINES=200,CHAT_RECONNECT_MIN=1e3,CHAT_RECONNECT_MAX=3e4,video=document.getElementById("video"),fsBtn=document.getElementById("fsBtn"),fsIcon=document.getElementById("fsIcon"),status=document.getElementById("status");video.preservesPitch=!0;const ICON_ENTER="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z",ICON_EXIT="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z";let unmuted=!1;function isFullscreen(){return!!(document.fullscreenElement||document.webkitFullscreenElement||document.msFullscreenElement)}function toggleFullscreen(){if(isFullscreen()){const e=document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen;e&&e.call(document)}else{const e=video.requestFullscreen||video.webkitRequestFullscreen||video.msRequestFullscreen;if(e){const t=e.call(video);t&&"function"==typeof t.catch&&t.catch(function(){})}}}function updateFsIcon(){fsIcon.firstElementChild.setAttribute("d",isFullscreen()?ICON_EXIT:ICON_ENTER)}function handleVideoUnmute(){unmuted||(unmuted=!0,video.muted=!1,status.classList.add("hidden")),video.paused&&video.play().catch(function(){})}if(document.addEventListener("fullscreenchange",updateFsIcon),document.addEventListener("webkitfullscreenchange",updateFsIcon),document.addEventListener("MSFullscreenChange",updateFsIcon),fsBtn.addEventListener("click",function(e){e.stopPropagation(),toggleFullscreen()}),video.addEventListener("click",handleVideoUnmute),video.addEventListener("touchstart",handleVideoUnmute,{passive:!0}),Hls.isSupported()){const e=new Hls({lowLatencyMode:!1,backBufferLength:30,liveSyncDurationCount:3,liveMaxLatencyDurationCount:10,liveDurationInfinity:!0,enableWorker:!0,startPosition:-1});e.loadSource(streamUrl),e.attachMedia(video),e.on(Hls.Events.MANIFEST_PARSED,function(){status.textContent="Live (click video for sound)",video.play().catch(function(){status.textContent="Click video to start."})}),e.on(Hls.Events.ERROR,function(t,n){if(n.fatal)switch(n.type){case Hls.ErrorTypes.NETWORK_ERROR:status.textContent="Network error. Retrying...",e.startLoad();break;case Hls.ErrorTypes.MEDIA_ERROR:status.textContent="Media error. Recovering...",e.recoverMediaError();break;default:status.textContent="Playback failed.",e.destroy()}})}else video.canPlayType("application/vnd.apple.mpegurl")?(video.src=streamUrl,status.textContent="Live (click video for sound)"):status.textContent="HLS is not supported in this browser.";const chatMessages=document.getElementById("chatMessages"),chatForm=document.getElementById("chatForm"),nickInput=document.getElementById("nickInput"),msgInput=document.getElementById("msgInput"),sendBtn=document.getElementById("sendBtn"),chatDot=document.getElementById("chatDot"),chatStatus=document.getElementById("chatStatus");let chatWs=null,chatReconnectDelay=1e3,chatReconnectTimer=null;try{const e=localStorage.getItem("chat_nick");e&&(nickInput.value=e.slice(0,20))}catch(e){}function setChatState(e){"online"===e?(chatDot.classList.add("online"),chatStatus.textContent="online",msgInput.disabled=!1,sendBtn.disabled=!1):"connecting"===e?(chatDot.classList.remove("online"),chatStatus.textContent="connecting",msgInput.disabled=!0,sendBtn.disabled=!0):(chatDot.classList.remove("online"),chatStatus.textContent="offline",msgInput.disabled=!0,sendBtn.disabled=!0)}function pushLine(e){const t=chatMessages.scrollHeight-chatMessages.scrollTop-chatMessages.clientHeight<40;for(chatMessages.appendChild(e);chatMessages.children.length>200;)chatMessages.removeChild(chatMessages.firstChild);t&&(chatMessages.scrollTop=chatMessages.scrollHeight)}function appendSystem(e){const t=document.createElement("div");t.className="chat-line system",t.textContent=e,pushLine(t)}function appendMessage(e,t,n){const c=document.createElement("div");c.className="chat-line";const s=document.createElement("span");s.className="nick",s.textContent=e;const a=document.createElement("span");a.className="text",a.textContent=t;const o=document.createElement("span");o.className="ts",o.textContent=new Date(n).toLocaleTimeString(void 0,{hour:"2-digit",minute:"2-digit"}),c.appendChild(s),c.appendChild(a),c.appendChild(o),pushLine(c)}function connectChat(){setChatState("connecting");try{chatWs=new WebSocket(CHAT_URL)}catch(e){return void scheduleReconnect()}chatWs.onopen=function(){chatReconnectDelay=1e3,setChatState("online"),appendSystem("connected")},chatWs.onmessage=function(e){let t;try{t=JSON.parse(e.data)}catch(e){return}t&&"string"==typeof t.type&&("msg"===t.type?appendMessage(String(t.nick||""),String(t.text||""),Number(t.ts)||Date.now()):"system"===t.type&&appendSystem(String(t.text||"")))},chatWs.onclose=function(){chatWs=null,setChatState("offline"),scheduleReconnect()},chatWs.onerror=function(){}}function scheduleReconnect(){chatReconnectTimer||(chatReconnectTimer=setTimeout(function(){chatReconnectTimer=null,connectChat()},chatReconnectDelay),chatReconnectDelay=Math.min(2*chatReconnectDelay,3e4))}chatForm.addEventListener("submit",function(e){if(e.preventDefault(),!chatWs||chatWs.readyState!==WebSocket.OPEN)return;const t=nickInput.value.trim().slice(0,20),n=msgInput.value.trim().slice(0,300);if(t){if(n){try{localStorage.setItem("chat_nick",t)}catch(e){}chatWs.send(JSON.stringify({type:"msg",nick:t,text:n})),msgInput.value="",msgInput.focus()}}else nickInput.focus()}),connectChat()</script>
+function stamp() {
+  return ((performance.now() - t0) / 1000).toFixed(2).padStart(7, ' ');
+}
+function log(cls, msg) {
+  lines.push('<span class="' + cls + '">' + stamp() + ' ' + msg + '</span>');
+  if (lines.length > 40) lines.shift();
+  hud.innerHTML = lines.join('\n') + '\n\n' + stats();
+}
+function stats() {
+  var b = v.buffered;
+  var bufStr = b.length ? (b.start(0).toFixed(1) + '-' + b.end(b.length-1).toFixed(1)) : 'none';
+  return [
+    'paused=' + v.paused + '  muted=' + v.muted + '  ready=' + v.readyState,
+    'cur=' + v.currentTime.toFixed(2) + '  rate=' + v.playbackRate,
+    'buffered=' + bufStr + '  seeking=' + v.seeking,
+    'networkState=' + v.networkState
+  ].join('\n');
+}
+
+['loadstart','loadedmetadata','canplay','canplaythrough','play','playing',
+ 'pause','waiting','stalled','suspend','emptied','abort','error',
+ 'ratechange','seeking','seeked','progress','durationchange'].forEach(function (ev) {
+  v.addEventListener(ev, function () { log('ev', ev); });
+});
+v.addEventListener('error', function () {
+  var e = v.error;
+  if (e) log('warn', 'ERR code=' + e.code + ' ' + (e.message || ''));
+});
+
+var lastPlayReject = '';
+function tryPlay(tag) {
+  var p = v.play();
+  if (p && p.catch) p.catch(function (err) {
+    lastPlayReject = tag + ' ' + err.name;
+    log('warn', 'play() rejected: ' + err.name + ' ' + (err.message || ''));
+  });
+}
+
+var unmuted = false;
+function onTap() {
+  if (!unmuted) {
+    unmuted = true;
+    v.muted = false;
+    log('ev', 'user unmuted');
+  }
+  if (v.paused) tryPlay('tap');
+}
+v.addEventListener('click', onTap);
+v.addEventListener('touchstart', onTap, { passive: true });
+
+var hls = new Hls({
+  lowLatencyMode: false,
+  backBufferLength: 30,
+  liveSyncDurationCount: 3,
+  liveMaxLatencyDurationCount: 10,
+  liveDurationInfinity: true,
+  enableWorker: true,
+  startPosition: -1
+});
+hls.loadSource('https://rtmp.br3xality.org/live/index.m3u8');
+hls.attachMedia(v);
+
+var LEVELINFO = '';
+hls.on(Hls.Events.MANIFEST_PARSED, function (e, d) {
+  var lv = d.levels && d.levels[0];
+  if (lv) {
+    LEVELINFO = 'seg~' + (lv.details ? '?' : '?');
+  }
+  log('ev', 'manifest parsed, levels=' + (d.levels ? d.levels.length : 0));
+  tryPlay('manifest');
+});
+
+hls.on(Hls.Events.LEVEL_LOADED, function (e, d) {
+  if (d.details) {
+    log('ev', 'level loaded: targetdur=' + d.details.targetduration +
+              ' frags=' + d.details.fragments.length);
+  }
+});
+
+hls.on(Hls.Events.FRAG_LOADED, function (e, d) {
+  log('ev', 'frag loaded: ' + (d.frag.sn) + ' dur=' + d.frag.duration.toFixed(2));
+});
+
+hls.on(Hls.Events.ERROR, function (e, d) {
+  log('warn', 'hls ERR ' + d.type + ' ' + d.details + (d.fatal ? ' FATAL' : ''));
+  if (!d.fatal) return;
+  if (d.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+  else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+});
+
+setInterval(function () { log('', 'tick'); }, 2000);
+</script>
+</body>
+</html>
