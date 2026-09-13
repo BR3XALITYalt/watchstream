@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BR3XALITY Live</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0d0d0d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: system-ui, sans-serif;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 960px;
+      padding: 16px;
+    }
+    video {
+      width: 100%;
+      background: #000;
+      border-radius: 8px;
+    }
+    .status {
+      color: #888;
+      font-size: 14px;
+      margin-top: 8px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <video id="video" controls autoplay muted playsinline></video>
+    <div class="status" id="status">Connecting...</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <script>
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        lowLatencyMode: true,
+        backBufferLength: 30
+      });
+
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, function () {
+        status.textContent = 'Stream loaded. Press play.';
+        video.play().catch(function () {
+          status.textContent = 'Autoplay blocked. Press play.';
+        });
+      });
+
+      hls.on(Hls.Events.ERROR, function (event, data) {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              status.textContent = 'Network error. Retrying...';
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              status.textContent = 'Media error. Recovering...';
+              hls.recoverMediaError();
+              break;
+            default:
+              status.textContent = 'Playback failed. Check the stream URL.';
+              hls.destroy();
+              break;
+          }
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+      status.textContent = 'Using native HLS playback.';
+    } else {
+      status.textContent = 'HLS is not supported in this browser.';
+    }
+  </script>
+</body>
+</html>
