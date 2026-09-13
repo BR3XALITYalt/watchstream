@@ -1,128 +1,564 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BR3XALITY debug</title>
-<style>
-  html, body { margin: 0; background: #0d0d0d; color: #eee; font: 13px system-ui; }
-  video { width: 100%; background: #000; display: block; }
-  #hud {
-    font: 11px ui-monospace, monospace;
-    white-space: pre;
-    padding: 8px 10px;
-    background: #111;
-    color: #9ae6a0;
-    border-top: 1px solid #222;
-    line-height: 1.45;
-    max-height: 55vh;
-    overflow: auto;
-  }
-  #hud .ev { color: #f5c96b; }
-  #hud .warn { color: #ff7b7b; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BR3XALITY Live</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #0d0d0d;
+      color: #e5e5e5;
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100%;
+      overflow: hidden;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 16px;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 0;
+    }
+    @media (max-width: 900px) {
+      html, body { overflow: auto; }
+      .layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(300px, 1fr);
+        gap: 12px;
+        padding: 12px;
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+    }
+    .video-col {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+    }
+    .player {
+      position: relative;
+      line-height: 0;
+      flex: 0 0 auto;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      cursor: pointer;
+      display: block;
+      object-fit: contain;
+    }
+    video:fullscreen {
+      border-radius: 0;
+    }
+    .start-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: #000;
+      color: #e5e5e5;
+      cursor: pointer;
+      border: none;
+      padding: 0;
+      font: inherit;
+      text-align: center;
+      z-index: 5;
+    }
+    .start-overlay.hidden { display: none; }
+    .start-overlay svg {
+      width: 72px;
+      height: 72px;
+      fill: #e5e5e5;
+      opacity: 0.9;
+    }
+    .start-overlay .label {
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .start-overlay .sub {
+      font-size: 12px;
+      color: #888;
+    }
+    .fs-btn {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+      z-index: 6;
+    }
+    .fs-btn:hover { background: rgba(0, 0, 0, 0.8); }
+    .fs-btn:focus-visible {
+      outline: 2px solid #4d6bfe;
+      outline-offset: 2px;
+    }
+    .fs-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+      pointer-events: none;
+    }
+    .status {
+      color: #888;
+      font-size: 14px;
+      margin-top: 8px;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .status.hidden { display: none; }
+
+    .chat {
+      background: #151515;
+      border: 1px solid #262626;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid #262626;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #e5e5e5;
+      flex: 0 0 auto;
+    }
+    .chat-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 400;
+      color: #666;
+    }
+    .chat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #444;
+      transition: background 0.2s ease;
+    }
+    .chat-dot.online { background: #22c55e; }
+    .chat-messages {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 10px 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #d4d4d4;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+    }
+    .chat-messages::-webkit-scrollbar { width: 8px; }
+    .chat-messages::-webkit-scrollbar-track { background: #151515; }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: #2e2e2e;
+      border-radius: 4px;
+    }
+    .chat-line {
+      margin: 0 0 6px;
+      line-height: 1.5;
+    }
+    .chat-line .nick {
+      color: #4d6bfe;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .chat-line .nick::after {
+      content: ":";
+      color: #555;
+      margin-left: 1px;
+      font-weight: 400;
+    }
+    .chat-line .ts {
+      color: #4a4a4a;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    .chat-line.system {
+      color: #666;
+      font-style: italic;
+      font-size: 12px;
+    }
+    .chat-form {
+      display: flex;
+      gap: 6px;
+      padding: 10px;
+      border-top: 1px solid #262626;
+      background: #121212;
+      flex: 0 0 auto;
+    }
+    .chat-form input {
+      background: #1e1e1e;
+      border: 1px solid #2e2e2e;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #e5e5e5;
+      font-size: 14px;
+      font-family: inherit;
+      min-width: 0;
+    }
+    .chat-form input:focus {
+      outline: none;
+      border-color: #4d6bfe;
+    }
+    .chat-form input.nick { flex: 0 0 72px; }
+    .chat-form input.msg { flex: 1; }
+    .chat-form button {
+      background: #4d6bfe;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0 14px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .chat-form button:hover { background: #3a55e0; }
+    .chat-form button:disabled {
+      background: #262626;
+      color: #555;
+      cursor: not-allowed;
+    }
+    .chat-form button:focus-visible {
+      outline: 2px solid #4d6bfe;
+      outline-offset: 2px;
+    }
+  </style>
 </head>
 <body>
-<video id="v" autoplay muted playsinline></video>
-<div id="hud">booting...</div>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
-<script>
-var v = document.getElementById('v');
-var hud = document.getElementById('hud');
-var lines = [];
-var t0 = performance.now();
+  <div class="layout">
+    <div class="video-col">
+      <div class="player">
+        <video id="video" playsinline preload="none"></video>
+        <button class="start-overlay" id="startOverlay" type="button" aria-label="Start live stream">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          <span class="label">Tap to play live</span>
+          <span class="sub">Sound on</span>
+        </button>
+        <button class="fs-btn" id="fsBtn" aria-label="Toggle fullscreen" type="button">
+          <svg id="fsIcon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
 
-function stamp() {
-  return ((performance.now() - t0) / 1000).toFixed(2).padStart(7, ' ');
-}
-function log(cls, msg) {
-  lines.push('<span class="' + cls + '">' + stamp() + ' ' + msg + '</span>');
-  if (lines.length > 40) lines.shift();
-  hud.innerHTML = lines.join('\n') + '\n\n' + stats();
-}
-function stats() {
-  var b = v.buffered;
-  var bufStr = b.length ? (b.start(0).toFixed(1) + '-' + b.end(b.length-1).toFixed(1)) : 'none';
-  return [
-    'paused=' + v.paused + '  muted=' + v.muted + '  ready=' + v.readyState,
-    'cur=' + v.currentTime.toFixed(2) + '  rate=' + v.playbackRate,
-    'buffered=' + bufStr + '  seeking=' + v.seeking,
-    'networkState=' + v.networkState
-  ].join('\n');
-}
+    <aside class="chat">
+      <div class="chat-header">
+        <span>Chat</span>
+        <span class="chat-status">
+          <span class="chat-dot" id="chatDot"></span>
+          <span id="chatStatus">connecting</span>
+        </span>
+      </div>
+      <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Chat messages"></div>
+      <form class="chat-form" id="chatForm" autocomplete="off">
+        <input class="nick" id="nickInput" type="text" placeholder="nick" maxlength="20" aria-label="Nickname">
+        <input class="msg" id="msgInput" type="text" placeholder="message" maxlength="300" disabled aria-label="Message">
+        <button id="sendBtn" type="submit" disabled>Send</button>
+      </form>
+    </aside>
+  </div>
 
-['loadstart','loadedmetadata','canplay','canplaythrough','play','playing',
- 'pause','waiting','stalled','suspend','emptied','abort','error',
- 'ratechange','seeking','seeked','progress','durationchange'].forEach(function (ev) {
-  v.addEventListener(ev, function () { log('ev', ev); });
-});
-v.addEventListener('error', function () {
-  var e = v.error;
-  if (e) log('warn', 'ERR code=' + e.code + ' ' + (e.message || ''));
-});
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <script>
+    const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
+    const CHAT_URL = 'wss://chat.br3xality.org/';
 
-var lastPlayReject = '';
-function tryPlay(tag) {
-  var p = v.play();
-  if (p && p.catch) p.catch(function (err) {
-    lastPlayReject = tag + ' ' + err.name;
-    log('warn', 'play() rejected: ' + err.name + ' ' + (err.message || ''));
-  });
-}
+    const NICK_MAX = 20;
+    const MSG_MAX = 300;
+    const MAX_CHAT_LINES = 200;
+    const CHAT_RECONNECT_MIN = 1000;
+    const CHAT_RECONNECT_MAX = 30000;
 
-var unmuted = false;
-function onTap() {
-  if (!unmuted) {
-    unmuted = true;
-    v.muted = false;
-    log('ev', 'user unmuted');
-  }
-  if (v.paused) tryPlay('tap');
-}
-v.addEventListener('click', onTap);
-v.addEventListener('touchstart', onTap, { passive: true });
+    const video = document.getElementById('video');
+    const fsBtn = document.getElementById('fsBtn');
+    const fsIcon = document.getElementById('fsIcon');
+    const status = document.getElementById('status');
+    const startOverlay = document.getElementById('startOverlay');
 
-var hls = new Hls({
-  lowLatencyMode: false,
-  backBufferLength: 30,
-  liveSyncDurationCount: 3,
-  liveMaxLatencyDurationCount: 10,
-  liveDurationInfinity: true,
-  enableWorker: true,
-  startPosition: -1
-});
-hls.loadSource('https://rtmp.br3xality.org/live/index.m3u8');
-hls.attachMedia(v);
+    video.preservesPitch = true;
 
-var LEVELINFO = '';
-hls.on(Hls.Events.MANIFEST_PARSED, function (e, d) {
-  var lv = d.levels && d.levels[0];
-  if (lv) {
-    LEVELINFO = 'seg~' + (lv.details ? '?' : '?');
-  }
-  log('ev', 'manifest parsed, levels=' + (d.levels ? d.levels.length : 0));
-  tryPlay('manifest');
-});
+    const ICON_ENTER = 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
+    const ICON_EXIT  = 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
 
-hls.on(Hls.Events.LEVEL_LOADED, function (e, d) {
-  if (d.details) {
-    log('ev', 'level loaded: targetdur=' + d.details.targetduration +
-              ' frags=' + d.details.fragments.length);
-  }
-});
+    let started = false;
+    let hls = null;
 
-hls.on(Hls.Events.FRAG_LOADED, function (e, d) {
-  log('ev', 'frag loaded: ' + (d.frag.sn) + ' dur=' + d.frag.duration.toFixed(2));
-});
+    function isFullscreen() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+    }
 
-hls.on(Hls.Events.ERROR, function (e, d) {
-  log('warn', 'hls ERR ' + d.type + ' ' + d.details + (d.fatal ? ' FATAL' : ''));
-  if (!d.fatal) return;
-  if (d.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
-  else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-});
+    function toggleFullscreen() {
+      if (isFullscreen()) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+        if (exit) exit.call(document);
+      } else {
+        const req = video.requestFullscreen || video.webkitRequestFullscreen || video.msRequestFullscreen;
+        if (req) {
+          const p = req.call(video);
+          if (p && typeof p.catch === 'function') p.catch(function () {});
+        }
+      }
+    }
 
-setInterval(function () { log('', 'tick'); }, 2000);
-</script>
+    function updateFsIcon() {
+      fsIcon.firstElementChild.setAttribute('d', isFullscreen() ? ICON_EXIT : ICON_ENTER);
+    }
+
+    document.addEventListener('fullscreenchange', updateFsIcon);
+    document.addEventListener('webkitfullscreenchange', updateFsIcon);
+    document.addEventListener('MSFullscreenChange', updateFsIcon);
+
+    fsBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleFullscreen();
+    });
+
+    function startPlayback() {
+      if (started) return;
+      started = true;
+
+      startOverlay.classList.add('hidden');
+      status.textContent = 'Connecting...';
+      status.classList.remove('hidden');
+
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          lowLatencyMode: false,
+          backBufferLength: 30,
+          liveSyncDurationCount: 3,
+          liveMaxLatencyDurationCount: 10,
+          liveDurationInfinity: true,
+          enableWorker: true,
+          startPosition: -1
+        });
+
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          status.classList.add('hidden');
+          video.play().catch(function () {
+            status.textContent = 'Tap again to start.';
+            status.classList.remove('hidden');
+          });
+        });
+
+        hls.on(Hls.Events.ERROR, function (event, data) {
+          if (!data.fatal) return;
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              status.textContent = 'Network error. Retrying...';
+              status.classList.remove('hidden');
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              status.textContent = 'Media error. Recovering...';
+              status.classList.remove('hidden');
+              hls.recoverMediaError();
+              break;
+            default:
+              status.textContent = 'Playback failed.';
+              status.classList.remove('hidden');
+              hls.destroy();
+              break;
+          }
+        });
+
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = streamUrl;
+        video.play().catch(function () {
+          status.textContent = 'Tap again to start.';
+          status.classList.remove('hidden');
+        });
+      } else {
+        status.textContent = 'HLS is not supported in this browser.';
+        status.classList.remove('hidden');
+      }
+    }
+
+    startOverlay.addEventListener('click', startPlayback);
+    video.addEventListener('click', function () {
+      if (!started) { startPlayback(); return; }
+      if (video.paused) video.play().catch(function () {});
+    });
+
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const nickInput = document.getElementById('nickInput');
+    const msgInput = document.getElementById('msgInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const chatDot = document.getElementById('chatDot');
+    const chatStatus = document.getElementById('chatStatus');
+
+    let chatWs = null;
+    let chatReconnectDelay = CHAT_RECONNECT_MIN;
+    let chatReconnectTimer = null;
+
+    try {
+      const saved = localStorage.getItem('chat_nick');
+      if (saved) nickInput.value = saved.slice(0, NICK_MAX);
+    } catch (e) {}
+
+    function setChatState(state) {
+      if (state === 'online') {
+        chatDot.classList.add('online');
+        chatStatus.textContent = 'online';
+        msgInput.disabled = false;
+        sendBtn.disabled = false;
+      } else if (state === 'connecting') {
+        chatDot.classList.remove('online');
+        chatStatus.textContent = 'connecting';
+        msgInput.disabled = true;
+        sendBtn.disabled = true;
+      } else {
+        chatDot.classList.remove('online');
+        chatStatus.textContent = 'offline';
+        msgInput.disabled = true;
+        sendBtn.disabled = true;
+      }
+    }
+
+    function pushLine(el) {
+      const nearBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 40;
+      chatMessages.appendChild(el);
+      while (chatMessages.children.length > MAX_CHAT_LINES) {
+        chatMessages.removeChild(chatMessages.firstChild);
+      }
+      if (nearBottom) chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function appendSystem(text) {
+      const line = document.createElement('div');
+      line.className = 'chat-line system';
+      line.textContent = text;
+      pushLine(line);
+    }
+
+    function appendMessage(nick, text, ts) {
+      const line = document.createElement('div');
+      line.className = 'chat-line';
+
+      const nickEl = document.createElement('span');
+      nickEl.className = 'nick';
+      nickEl.textContent = nick;
+
+      const textEl = document.createElement('span');
+      textEl.className = 'text';
+      textEl.textContent = text;
+
+      const tsEl = document.createElement('span');
+      tsEl.className = 'ts';
+      tsEl.textContent = new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+      line.appendChild(nickEl);
+      line.appendChild(textEl);
+      line.appendChild(tsEl);
+      pushLine(line);
+    }
+
+    function connectChat() {
+      setChatState('connecting');
+      try {
+        chatWs = new WebSocket(CHAT_URL);
+      } catch (e) {
+        scheduleReconnect();
+        return;
+      }
+
+      chatWs.onopen = function () {
+        chatReconnectDelay = CHAT_RECONNECT_MIN;
+        setChatState('online');
+        appendSystem('connected');
+      };
+
+      chatWs.onmessage = function (ev) {
+        let m;
+        try { m = JSON.parse(ev.data); } catch (err) { return; }
+        if (!m || typeof m.type !== 'string') return;
+        if (m.type === 'msg') {
+          appendMessage(String(m.nick || ''), String(m.text || ''), Number(m.ts) || Date.now());
+        } else if (m.type === 'system') {
+          appendSystem(String(m.text || ''));
+        }
+      };
+
+      chatWs.onclose = function () {
+        chatWs = null;
+        setChatState('offline');
+        scheduleReconnect();
+      };
+
+      chatWs.onerror = function () {};
+    }
+
+    function scheduleReconnect() {
+      if (chatReconnectTimer) return;
+      chatReconnectTimer = setTimeout(function () {
+        chatReconnectTimer = null;
+        connectChat();
+      }, chatReconnectDelay);
+      chatReconnectDelay = Math.min(chatReconnectDelay * 2, CHAT_RECONNECT_MAX);
+    }
+
+    chatForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!chatWs || chatWs.readyState !== WebSocket.OPEN) return;
+
+      const nick = nickInput.value.trim().slice(0, NICK_MAX);
+      const text = msgInput.value.trim().slice(0, MSG_MAX);
+      if (!nick) { nickInput.focus(); return; }
+      if (!text) return;
+
+      try { localStorage.setItem('chat_nick', nick); } catch (err) {}
+
+      chatWs.send(JSON.stringify({ type: 'msg', nick: nick, text: text }));
+      msgInput.value = '';
+      msgInput.focus();
+    });
+
+    connectChat();
+  </script>
 </body>
 </html>
