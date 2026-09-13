@@ -263,8 +263,6 @@
     const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
     const CHAT_URL = 'wss://chat.br3xality.org/';
 
-    const MAX_DRIFT = 4;
-
     const NICK_MAX = 20;
     const MSG_MAX = 300;
     const MAX_CHAT_LINES = 200;
@@ -279,7 +277,6 @@
     const fsIcon = document.getElementById('fsIcon');
     const status = document.getElementById('status');
 
-    // Preserve pitch across any playback rate changes hls.js applies.
     video.preservesPitch = true;
     video.webkitPreservesPitch = true;
     video.mozPreservesPitch = true;
@@ -334,18 +331,17 @@
     // ---------------------------------------------------------------------------
     // HLS playback
     //
-    // Middle ground between the tightest (1/2) and the loosest (3/6) config:
-    // - liveSyncDurationCount 2 keeps the player two segments behind live.
-    // - liveMaxLatencyDurationCount 3 caps the drift window at three segments.
-    // - maxLiveSyncPlaybackRate stays at 1.1 with pitch preservation on.
-    // - MAX_DRIFT 4 snaps forward if the buffer ever slips past four seconds.
+    // No custom drift snap here. hls.js has its own live sync engine and the
+    // previous setInterval was stepping on it, causing the rewind-then-freeze
+    // cycle. maxLiveSyncPlaybackRate 1.1 with pitch preservation keeps the
+    // buffer healthy without needing any external nudge.
     // ---------------------------------------------------------------------------
     if (Hls.isSupported()) {
       const hls = new Hls({
         lowLatencyMode: true,
-        backBufferLength: 10,
-        liveSyncDurationCount: 2,
-        liveMaxLatencyDurationCount: 3,
+        backBufferLength: 15,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 6,
         liveDurationInfinity: true,
         maxLiveSyncPlaybackRate: 1.1,
         startPosition: -1
@@ -379,25 +375,14 @@
         }
       });
 
-      setInterval(function () {
-        if (!hls.latency || video.paused) return;
-        if (hls.latency > MAX_DRIFT) {
-          const target = hls.liveSyncPosition;
-          if (typeof target === 'number' && isFinite(target)) {
-            video.currentTime = target;
-          }
-        }
-      }, 2500);
-
+      // Only reload if the buffer is genuinely starved and the player is stuck.
+      // No currentTime manipulation; hls.js handles positioning.
       video.addEventListener('waiting', function () {
         setTimeout(function () {
           if (video.readyState < 3 && !video.paused) {
-            const target = hls.liveSyncPosition;
-            if (typeof target === 'number' && isFinite(target)) {
-              video.currentTime = target;
-            }
+            hls.startLoad();
           }
-        }, 1500);
+        }, 3000);
       });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
