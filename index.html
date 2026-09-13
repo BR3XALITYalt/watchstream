@@ -12,28 +12,43 @@
       background: #0d0d0d;
       color: #e5e5e5;
       font-family: system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
+      height: 100%;
+      overflow: hidden;
     }
     .layout {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 340px;
       gap: 16px;
+      width: 100%;
       max-width: 1400px;
       margin: 0 auto;
       padding: 16px;
-      align-items: start;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 0;
     }
     @media (max-width: 900px) {
+      html, body { overflow: auto; }
       .layout {
         grid-template-columns: 1fr;
-        padding: 12px;
+        grid-template-rows: auto minmax(300px, 1fr);
         gap: 12px;
+        padding: 12px;
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
       }
     }
-    .video-col { min-width: 0; }
+    .video-col {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+    }
     .player {
       position: relative;
       line-height: 0;
+      flex: 0 0 auto;
     }
     video {
       width: 100%;
@@ -89,11 +104,8 @@
       border-radius: 8px;
       display: flex;
       flex-direction: column;
-      height: 640px;
+      min-height: 0;
       overflow: hidden;
-    }
-    @media (max-width: 900px) {
-      .chat { height: 420px; }
     }
     .chat-header {
       display: flex;
@@ -105,6 +117,7 @@
       font-weight: 600;
       letter-spacing: 0.02em;
       color: #e5e5e5;
+      flex: 0 0 auto;
     }
     .chat-status {
       display: flex;
@@ -123,7 +136,8 @@
     }
     .chat-dot.online { background: #22c55e; }
     .chat-messages {
-      flex: 1;
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
       padding: 10px 14px;
       font-size: 14px;
@@ -169,6 +183,7 @@
       padding: 10px;
       border-top: 1px solid #262626;
       background: #121212;
+      flex: 0 0 auto;
     }
     .chat-form input {
       background: #1e1e1e;
@@ -242,9 +257,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
   <script>
-    // ---------------------------------------------------------------------------
-    // Configuration
-    // ---------------------------------------------------------------------------
     const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
     const CHAT_URL = 'wss://chat.br3xality.org/';
 
@@ -255,9 +267,6 @@
     const CHAT_RECONNECT_MIN = 1000;
     const CHAT_RECONNECT_MAX = 30000;
 
-    // ---------------------------------------------------------------------------
-    // Video elements
-    // ---------------------------------------------------------------------------
     const video = document.getElementById('video');
     const fsBtn = document.getElementById('fsBtn');
     const fsIcon = document.getElementById('fsIcon');
@@ -310,9 +319,6 @@
     video.addEventListener('click', handleVideoUnmute);
     video.addEventListener('touchstart', handleVideoUnmute, { passive: true });
 
-    // ---------------------------------------------------------------------------
-    // HLS playback with live-edge drift correction
-    // ---------------------------------------------------------------------------
     if (Hls.isSupported()) {
       const hls = new Hls({
         lowLatencyMode: true,
@@ -379,9 +385,6 @@
       status.textContent = 'HLS is not supported in this browser.';
     }
 
-    // ---------------------------------------------------------------------------
-    // Chat
-    // ---------------------------------------------------------------------------
     const chatMessages = document.getElementById('chatMessages');
     const chatForm = document.getElementById('chatForm');
     const nickInput = document.getElementById('nickInput');
@@ -394,7 +397,6 @@
     let chatReconnectDelay = CHAT_RECONNECT_MIN;
     let chatReconnectTimer = null;
 
-    // Restore saved nickname.
     try {
       const saved = localStorage.getItem('chat_nick');
       if (saved) nickInput.value = saved.slice(0, NICK_MAX);
@@ -489,9 +491,7 @@
         scheduleReconnect();
       };
 
-      chatWs.onerror = function () {
-        // onclose follows.
-      };
+      chatWs.onerror = function () {};
     }
 
     function scheduleReconnect() {
