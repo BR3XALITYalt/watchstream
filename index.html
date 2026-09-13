@@ -197,87 +197,6 @@
     }
     .status.hidden { display: none; }
 
-    .log-overlay {
-      position: fixed;
-      left: 8px;
-      right: 8px;
-      bottom: 8px;
-      max-height: 40vh;
-      background: rgba(0, 0, 0, 0.88);
-      border: 1px solid #2e2e2e;
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      z-index: 9999;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 11px;
-      line-height: 1.4;
-      color: #9ae6a0;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    }
-    .log-overlay.collapsed .log-body { display: none; }
-    .log-head {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 8px;
-      border-bottom: 1px solid #2e2e2e;
-      background: #111;
-      border-radius: 8px 8px 0 0;
-    }
-    .log-overlay.collapsed .log-head {
-      border-bottom: none;
-      border-radius: 8px;
-    }
-    .log-title {
-      flex: 1;
-      color: #888;
-      font-size: 11px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      cursor: pointer;
-      user-select: none;
-    }
-    .log-btn {
-      background: #262626;
-      color: #e5e5e5;
-      border: 1px solid #3a3a3a;
-      border-radius: 4px;
-      padding: 3px 8px;
-      font-size: 11px;
-      font-family: inherit;
-      cursor: pointer;
-      flex: 0 0 auto;
-    }
-    .log-btn:hover { background: #333; }
-    .log-btn:focus-visible {
-      outline: 2px solid #4d6bfe;
-      outline-offset: 1px;
-    }
-    .log-btn.copied {
-      background: #22c55e;
-      color: #0d0d0d;
-      border-color: #22c55e;
-    }
-    .log-body {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 6px 8px;
-      white-space: pre;
-      word-break: normal;
-      overflow-wrap: normal;
-    }
-    .log-body::-webkit-scrollbar { width: 6px; }
-    .log-body::-webkit-scrollbar-track { background: transparent; }
-    .log-body::-webkit-scrollbar-thumb {
-      background: #333;
-      border-radius: 3px;
-    }
-    .log-line.err { color: #ff7b7b; }
-    .log-line.warn { color: #f5c96b; }
-    .log-line.ok { color: #22c55e; font-weight: 600; }
-
     .chat {
       background: #151515;
       border: 1px solid #262626;
@@ -446,15 +365,6 @@
     </aside>
   </div>
 
-  <div class="log-overlay" id="logOverlay">
-    <div class="log-head">
-      <span class="log-title" id="logTitle">Logs (tap to toggle)</span>
-      <button class="log-btn" id="logCopy" type="button">Copy</button>
-      <button class="log-btn" id="logClear" type="button">Clear</button>
-    </div>
-    <div class="log-body" id="logBody"></div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
   <script>
     const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
@@ -474,125 +384,6 @@
     const volSlider = document.getElementById('volSlider');
     const soundBtn = document.getElementById('soundBtn');
 
-    // ===== Log overlay =====
-    const logOverlay = document.getElementById('logOverlay');
-    const logBody = document.getElementById('logBody');
-    const logCopy = document.getElementById('logCopy');
-    const logClear = document.getElementById('logClear');
-    const logTitle = document.getElementById('logTitle');
-
-    const LOG_MAX_LINES = 500;
-    const logLines = [];
-    const logStart = performance.now();
-
-    function logPush(kind, text) {
-      const t = ((performance.now() - logStart) / 1000).toFixed(2).padStart(7, ' ');
-      const line = t + ' ' + text;
-      logLines.push({ kind: kind, text: line });
-      if (logLines.length > LOG_MAX_LINES) logLines.shift();
-      renderLog();
-    }
-
-    function renderLog() {
-      const tail = logLines.slice(-200);
-      let html = '';
-      for (let i = 0; i < tail.length; i++) {
-        const L = tail[i];
-        const esc = L.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const cls = L.kind === 'err' ? ' err' : (L.kind === 'warn' ? ' warn' : (L.kind === 'ok' ? ' ok' : ''));
-        html += '<div class="log-line' + cls + '">' + esc + '</div>';
-      }
-      logBody.innerHTML = html;
-      logBody.scrollTop = logBody.scrollHeight;
-    }
-
-    function logClearAll() {
-      logLines.length = 0;
-      renderLog();
-    }
-
-    (function () {
-      const origLog = console.log;
-      const origErr = console.error;
-      const origWarn = console.warn;
-
-      console.log = function () {
-        const s = Array.prototype.map.call(arguments, fmtArg).join(' ');
-        logPush('log', s);
-        origLog.apply(console, arguments);
-      };
-      console.error = function () {
-        const s = Array.prototype.map.call(arguments, fmtArg).join(' ');
-        logPush('err', s);
-        origErr.apply(console, arguments);
-      };
-      console.warn = function () {
-        const s = Array.prototype.map.call(arguments, fmtArg).join(' ');
-        logPush('warn', s);
-        origWarn.apply(console, arguments);
-      };
-
-      function fmtArg(a) {
-        if (typeof a === 'string') return a;
-        if (a instanceof Error) return a.name + ': ' + a.message;
-        try { return JSON.stringify(a); } catch (e) { return String(a); }
-      }
-    })();
-
-    logTitle.addEventListener('click', function () {
-      logOverlay.classList.toggle('collapsed');
-    });
-
-    logClear.addEventListener('click', function (e) {
-      e.stopPropagation();
-      logClearAll();
-    });
-
-    logCopy.addEventListener('click', function (e) {
-      e.stopPropagation();
-      const text = logLines.map(function (L) { return L.text; }).join('\n');
-
-      function flashOk() {
-        logCopy.classList.add('copied');
-        const orig = logCopy.textContent;
-        logCopy.textContent = 'Copied';
-        setTimeout(function () {
-          logCopy.classList.remove('copied');
-          logCopy.textContent = orig;
-        }, 1200);
-      }
-
-      function fallbackCopy() {
-        try {
-          const ta = document.createElement('textarea');
-          ta.value = text;
-          ta.setAttribute('readonly', '');
-          ta.style.position = 'fixed';
-          ta.style.top = '-1000px';
-          document.body.appendChild(ta);
-          ta.select();
-          ta.setSelectionRange(0, ta.value.length);
-          const ok = document.execCommand('copy');
-          document.body.removeChild(ta);
-          if (ok) flashOk();
-          else console.error('[copy] execCommand returned false');
-        } catch (err) {
-          console.error('[copy] fallback failed: ' + err.message);
-        }
-      }
-
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(flashOk).catch(function (err) {
-          console.warn('[copy] clipboard API failed: ' + err.message + ', falling back');
-          fallbackCopy();
-        });
-      } else {
-        fallbackCopy();
-      }
-    });
-
-    // ===== Web Audio setup (routing audio through AudioContext bypasses
-    // HTMLMediaElement autoplay policy on Firefox Android) =====
     let audioCtx = null;
     let audioSrc = null;
 
@@ -604,9 +395,7 @@
         audioCtx = new Ctx();
         audioSrc = audioCtx.createMediaElementSource(video);
         audioSrc.connect(audioCtx.destination);
-        console.log('[web audio] ctx created, state=' + audioCtx.state);
       } catch (e) {
-        console.error('[web audio] setup failed: ' + e.message);
         audioCtx = null;
         audioSrc = null;
       }
@@ -616,22 +405,12 @@
     function resumeAudioContext() {
       if (!audioCtx) return;
       if (audioCtx.state === 'suspended') {
-        audioCtx.resume().then(function () {
-          console.log('[web audio] ctx resumed, state=' + audioCtx.state);
-        }).catch(function (e) {
-          console.error('[web audio] resume failed: ' + e.message);
-        });
+        audioCtx.resume().catch(function () {});
       }
     }
 
-    // ===== MediaSession setup =====
-    // Register our own session so Firefox Android stops treating OS
-    // pause signals as authoritative, and swallow pause/stop requests.
     function setupMediaSession() {
-      if (!('mediaSession' in navigator)) {
-        console.log('[media session] not supported');
-        return;
-      }
+      if (!('mediaSession' in navigator)) return;
       try {
         if (window.MediaMetadata) {
           navigator.mediaSession.metadata = new MediaMetadata({
@@ -640,31 +419,23 @@
             album: 'Live Stream'
           });
         }
-      } catch (e) {
-        console.warn('[media session] metadata failed: ' + e.message);
-      }
+      } catch (e) {}
       try {
         navigator.mediaSession.setActionHandler('play', function () {
-          console.log('[media session] play requested');
           video.play().catch(function () {});
         });
       } catch (e) {}
       try {
-        navigator.mediaSession.setActionHandler('pause', function () {
-          console.log('[media session] pause request IGNORED (live stream)');
-        });
+        navigator.mediaSession.setActionHandler('pause', function () {});
       } catch (e) {}
       try {
-        navigator.mediaSession.setActionHandler('stop', function () {
-          console.log('[media session] stop request IGNORED');
-        });
+        navigator.mediaSession.setActionHandler('stop', function () {});
       } catch (e) {}
       try {
         navigator.mediaSession.setActionHandler('seekbackward', function () {});
         navigator.mediaSession.setActionHandler('seekforward', function () {});
         navigator.mediaSession.setActionHandler('seekto', function () {});
       } catch (e) {}
-      console.log('[media session] configured');
     }
 
     video.addEventListener('playing', function () {
@@ -677,50 +448,6 @@
         try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {}
       }
     });
-
-    // ===== Diagnostics =====
-    (function () {
-      const origPause = HTMLMediaElement.prototype.pause;
-      const origPlay = HTMLMediaElement.prototype.play;
-
-      HTMLMediaElement.prototype.pause = function () {
-        console.error('[MEDIA pause()] muted=' + this.muted +
-          ' paused(before)=' + this.paused +
-          ' t=' + this.currentTime.toFixed(2) +
-          '\nSTACK:\n' + new Error().stack);
-        return origPause.call(this);
-      };
-
-      HTMLMediaElement.prototype.play = function () {
-        console.log('[MEDIA play()] muted=' + this.muted +
-          ' paused=' + this.paused +
-          ' ready=' + this.readyState +
-          ' ua=' + (navigator.userActivation ? navigator.userActivation.isActive + '/' + navigator.userActivation.hasBeenActive : 'n/a'));
-        const p = origPlay.call(this);
-        if (p && typeof p.then === 'function') {
-          p.then(function () { console.log('[MEDIA play OK]'); })
-           .catch(function (e) { console.error('[MEDIA play REJECTED] ' + e.name + ': ' + e.message); });
-        }
-        return p;
-      };
-
-      ['play','playing','pause','waiting','stalled','canplay','canplaythrough','loadedmetadata','seeking','seeked'].forEach(function (name) {
-        video.addEventListener(name, function () {
-          console.log('[EV] ' + name +
-            ' paused=' + video.paused +
-            ' muted=' + video.muted +
-            ' t=' + video.currentTime.toFixed(2) +
-            ' ready=' + video.readyState +
-            ' vis=' + document.visibilityState +
-            ' ua=' + (navigator.userActivation ? navigator.userActivation.isActive : 'n/a'));
-        });
-      });
-
-      document.addEventListener('visibilitychange', function () {
-        console.log('[VIS] ' + document.visibilityState);
-      });
-    })();
-    // ===== End diagnostics =====
 
     video.preservesPitch = true;
     video.volume = 1;
@@ -771,8 +498,7 @@
     function playNow() {
       const p = video.play();
       if (p && typeof p.catch === 'function') {
-        p.catch(function (err) {
-          console.error('[playNow] ' + err.name + ': ' + err.message);
+        p.catch(function () {
           status.textContent = 'Tap again to start.';
           status.classList.remove('hidden');
         });
@@ -786,8 +512,6 @@
 
       startOverlay.classList.add('hidden');
 
-      // These two lines are the key: satisfy both autoplay gates inside
-      // the tap that started playback.
       setupMediaSession();
       ensureAudioContext();
       resumeAudioContext();
@@ -804,7 +528,7 @@
           liveSyncDurationCount: 3,
           liveMaxLatencyDurationCount: 10,
           liveDurationInfinity: true,
-          enableWorker: true,
+          enableWorker: false,
           startPosition: -1
         });
 
@@ -853,14 +577,11 @@
     startOverlay.addEventListener('click', startPlayback);
 
     soundBtn.addEventListener('click', function () {
-      // Resume audio context inside the same gesture.
       resumeAudioContext();
-
       video.muted = false;
       video.volume = (parseInt(volSlider.value, 10) || 100) / 100;
       playNow();
       soundBtn.hidden = true;
-
       if ('mediaSession' in navigator) {
         try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
       }
