@@ -34,7 +34,7 @@
 </head>
 <body>
   <div class="wrapper">
-    <video id="video" controls autoplay muted playsinline></video>
+    <video id="video" autoplay muted playsinline></video>
     <div class="status" id="status">Connecting...</div>
   </div>
 
@@ -44,19 +44,27 @@
     const status = document.getElementById('status');
     const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
 
+    // Max allowed distance behind the live edge before we snap forward, in seconds.
+    const MAX_DRIFT = 4;
+
     if (Hls.isSupported()) {
       const hls = new Hls({
         lowLatencyMode: true,
-        backBufferLength: 30
+        backBufferLength: 10,
+        liveSyncDurationCount: 1,
+        liveMaxLatencyDurationCount: 3,
+        liveDurationInfinity: true,
+        maxLiveSyncPlaybackRate: 1.5,
+        startPosition: -1
       });
 
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, function () {
-        status.textContent = 'Stream loaded. Press play.';
+        status.textContent = 'Live';
         video.play().catch(function () {
-          status.textContent = 'Autoplay blocked. Press play.';
+          status.textContent = 'Autoplay blocked. Click the page to start.';
         });
       });
 
@@ -78,9 +86,36 @@
           }
         }
       });
+
+      // Drift correction: every few seconds, check how far behind the
+      // live edge playback has fallen. If it exceeds MAX_DRIFT, snap forward.
+      setInterval(function () {
+        if (!hls.latency) return;
+        if (video.paused) return;
+        if (hls.latency > MAX_DRIFT) {
+          const target = hls.liveSyncPosition;
+          if (typeof target === 'number' && isFinite(target)) {
+            video.currentTime = target;
+          }
+        }
+      }, 3000);
+
+      // If playback stalls (buffer underrun), retry from the live edge.
+      video.addEventListener('waiting', function () {
+        setTimeout(function () {
+          if (video.readyState < 3 && !video.paused) {
+            const target = hls.liveSyncPosition;
+            if (typeof target === 'number' && isFinite(target)) {
+              video.currentTime = target;
+            }
+          }
+        }, 1500);
+      });
+
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS. It handles live edge on its own, mostly.
       video.src = streamUrl;
-      status.textContent = 'Using native HLS playback.';
+      status.textContent = 'Live';
     } else {
       status.textContent = 'HLS is not supported in this browser.';
     }
