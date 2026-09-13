@@ -132,6 +132,7 @@
       background: #151515;
       border: 1px solid #262626;
       border-radius: 8px;
+      flex-wrap: wrap;
     }
     .controls label {
       font-size: 12px;
@@ -140,7 +141,7 @@
     }
     .controls input[type="range"] {
       flex: 1;
-      min-width: 0;
+      min-width: 100px;
       -webkit-appearance: none;
       appearance: none;
       height: 4px;
@@ -169,6 +170,24 @@
       outline: 2px solid #4d6bfe;
       outline-offset: 2px;
     }
+    .controls button {
+      background: #4d6bfe;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      flex: 0 0 auto;
+    }
+    .controls button:hover { background: #3a55e0; }
+    .controls button:focus-visible {
+      outline: 2px solid #4d6bfe;
+      outline-offset: 2px;
+    }
+    .controls button[hidden] { display: none; }
     .status {
       color: #888;
       font-size: 14px;
@@ -308,7 +327,7 @@
   <div class="layout">
     <div class="video-col">
       <div class="player">
-        <video id="video" playsinline preload="none"></video>
+        <video id="video" playsinline preload="none" muted></video>
         <button class="start-overlay" id="startOverlay" type="button" aria-label="Start live stream">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z"/>
@@ -322,6 +341,7 @@
         </button>
       </div>
       <div class="controls">
+        <button id="soundBtn" type="button" hidden>Enable sound</button>
         <label for="volSlider">Volume</label>
         <input type="range" id="volSlider" min="0" max="100" value="100" step="1" aria-label="Volume">
       </div>
@@ -345,7 +365,7 @@
     </aside>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
   <script>
     const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
     const CHAT_URL = 'wss://chat.br3xality.org/';
@@ -362,9 +382,57 @@
     const status = document.getElementById('status');
     const startOverlay = document.getElementById('startOverlay');
     const volSlider = document.getElementById('volSlider');
+    const soundBtn = document.getElementById('soundBtn');
+
+    // ===== DIAGNOSTICS: identify who pauses the element =====
+    (function () {
+      const origPause = HTMLMediaElement.prototype.pause;
+      const origPlay = HTMLMediaElement.prototype.play;
+
+      HTMLMediaElement.prototype.pause = function () {
+        console.error('[MEDIA pause()]',
+          'muted=' + this.muted,
+          'paused(before)=' + this.paused,
+          't=' + this.currentTime,
+          '\nSTACK:\n' + new Error().stack);
+        return origPause.call(this);
+      };
+
+      HTMLMediaElement.prototype.play = function () {
+        console.log('[MEDIA play()]',
+          'muted=' + this.muted,
+          'paused=' + this.paused,
+          'ready=' + this.readyState,
+          'ua=' + (navigator.userActivation ? navigator.userActivation.isActive + '/' + navigator.userActivation.hasBeenActive : 'n/a'));
+        const p = origPlay.call(this);
+        if (p && typeof p.then === 'function') {
+          p.then(function () { console.log('[MEDIA play OK]'); })
+           .catch(function (e) { console.error('[MEDIA play REJECTED]', e.name, e.message); });
+        }
+        return p;
+      };
+
+      ['play','playing','pause','waiting','stalled','canplay','canplaythrough','loadedmetadata','seeking','seeked'].forEach(function (name) {
+        video.addEventListener(name, function () {
+          console.log('[EV]', name,
+            'paused=' + video.paused,
+            'muted=' + video.muted,
+            't=' + video.currentTime.toFixed(2),
+            'ready=' + video.readyState,
+            'vis=' + document.visibilityState,
+            'ua=' + (navigator.userActivation ? navigator.userActivation.isActive : 'n/a'));
+        });
+      });
+
+      document.addEventListener('visibilitychange', function () {
+        console.log('[VIS]', document.visibilityState);
+      });
+    })();
+    // ===== END DIAGNOSTICS =====
 
     video.preservesPitch = true;
     video.volume = 1;
+    video.muted = true;
 
     const ICON_ENTER = 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
     const ICON_EXIT  = 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
@@ -407,15 +475,29 @@
       video.volume = v;
     });
 
+    function playNow() {
+      const p = video.play();
+      if (p && typeof p.catch === 'function') {
+        p.catch(function (err) {
+          console.error('[playNow]', err.name, err.message);
+          status.textContent = 'Tap again to start.';
+          status.classList.remove('hidden');
+        });
+      }
+      return p;
+    }
+
     function startPlayback() {
       if (started) return;
       started = true;
 
       startOverlay.classList.add('hidden');
+
+      // Playback starts MUTED, synchronously inside the tap gesture.
+      video.muted = true;
+
       status.textContent = 'Connecting...';
       status.classList.remove('hidden');
-
-      video.volume = (parseInt(volSlider.value, 10) || 100) / 100;
 
       if (Hls.isSupported()) {
         hls = new Hls({
@@ -428,15 +510,16 @@
           startPosition: -1
         });
 
-        hls.loadSource(streamUrl);
         hls.attachMedia(video);
+        hls.loadSource(streamUrl);
+
+        // play() is called RIGHT NOW, inside the user gesture.
+        playNow();
 
         hls.on(Hls.Events.MANIFEST_PARSED, function () {
           status.classList.add('hidden');
-          video.play().catch(function () {
-            status.textContent = 'Tap again to start.';
-            status.classList.remove('hidden');
-          });
+          // Show the sound button once we have a live stream.
+          soundBtn.hidden = false;
         });
 
         hls.on(Hls.Events.ERROR, function (event, data) {
@@ -456,16 +539,15 @@
               status.textContent = 'Playback failed.';
               status.classList.remove('hidden');
               hls.destroy();
+              hls = null;
               break;
           }
         });
 
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = streamUrl;
-        video.play().catch(function () {
-          status.textContent = 'Tap again to start.';
-          status.classList.remove('hidden');
-        });
+        playNow();
+        soundBtn.hidden = false;
       } else {
         status.textContent = 'HLS is not supported in this browser.';
         status.classList.remove('hidden');
@@ -473,9 +555,18 @@
     }
 
     startOverlay.addEventListener('click', startPlayback);
+
+    // The unmute happens in its OWN user gesture. No transient activation expiry.
+    soundBtn.addEventListener('click', function () {
+      video.muted = false;
+      video.volume = (parseInt(volSlider.value, 10) || 100) / 100;
+      playNow();
+      soundBtn.hidden = true;
+    });
+
     video.addEventListener('click', function () {
       if (!started) { startPlayback(); return; }
-      if (video.paused) video.play().catch(function () {});
+      if (video.paused) playNow();
     });
 
     const chatMessages = document.getElementById('chatMessages');
