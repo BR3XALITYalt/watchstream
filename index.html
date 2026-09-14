@@ -541,10 +541,11 @@
     let hls = null;
 
     /*
-     * Keep audio completely inside the native <video> element.
+     * Keep the browser's native audio pipeline.
+     * Do not create an AudioContext or MediaElementAudioSourceNode.
      *
-     * Do NOT create an AudioContext or MediaElementAudioSourceNode.
-     * This is especially useful for Firefox Android.
+     * This avoids adding another timing clock to Firefox's
+     * audio/video pipeline.
      */
     video.preservesPitch = true;
     video.volume = 1;
@@ -568,23 +569,43 @@
       } catch (e) {}
 
       try {
-        navigator.mediaSession.setActionHandler('play', function () {
-          video.play().catch(function () {});
-        });
+        navigator.mediaSession.setActionHandler(
+          'play',
+          function () {
+            video.play().catch(function () {});
+          }
+        );
       } catch (e) {}
 
       try {
-        navigator.mediaSession.setActionHandler('pause', function () {});
+        navigator.mediaSession.setActionHandler(
+          'pause',
+          function () {}
+        );
       } catch (e) {}
 
       try {
-        navigator.mediaSession.setActionHandler('stop', function () {});
+        navigator.mediaSession.setActionHandler(
+          'stop',
+          function () {}
+        );
       } catch (e) {}
 
       try {
-        navigator.mediaSession.setActionHandler('seekbackward', function () {});
-        navigator.mediaSession.setActionHandler('seekforward', function () {});
-        navigator.mediaSession.setActionHandler('seekto', function () {});
+        navigator.mediaSession.setActionHandler(
+          'seekbackward',
+          function () {}
+        );
+
+        navigator.mediaSession.setActionHandler(
+          'seekforward',
+          function () {}
+        );
+
+        navigator.mediaSession.setActionHandler(
+          'seekto',
+          function () {}
+        );
       } catch (e) {}
     }
 
@@ -622,7 +643,10 @@
         if (exit) {
           const promise = exit.call(document);
 
-          if (promise && typeof promise.catch === 'function') {
+          if (
+            promise &&
+            typeof promise.catch === 'function'
+          ) {
             promise.catch(function () {});
           }
         }
@@ -638,7 +662,10 @@
       if (req) {
         const promise = req.call(video);
 
-        if (promise && typeof promise.catch === 'function') {
+        if (
+          promise &&
+          typeof promise.catch === 'function'
+        ) {
           promise.catch(function () {});
         }
       }
@@ -651,9 +678,20 @@
       );
     }
 
-    document.addEventListener('fullscreenchange', updateFsIcon);
-    document.addEventListener('webkitfullscreenchange', updateFsIcon);
-    document.addEventListener('MSFullscreenChange', updateFsIcon);
+    document.addEventListener(
+      'fullscreenchange',
+      updateFsIcon
+    );
+
+    document.addEventListener(
+      'webkitfullscreenchange',
+      updateFsIcon
+    );
+
+    document.addEventListener(
+      'MSFullscreenChange',
+      updateFsIcon
+    );
 
     fsBtn.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -661,8 +699,16 @@
     });
 
     volSlider.addEventListener('input', function () {
-      const value = parseInt(volSlider.value, 10);
-      const volume = Math.max(0, Math.min(100, value || 0)) / 100;
+      const value = parseInt(
+        volSlider.value,
+        10
+      );
+
+      const volume =
+        Math.max(
+          0,
+          Math.min(100, value || 0)
+        ) / 100;
 
       video.volume = volume;
     });
@@ -670,9 +716,14 @@
     function playNow() {
       const promise = video.play();
 
-      if (promise && typeof promise.catch === 'function') {
+      if (
+        promise &&
+        typeof promise.catch === 'function'
+      ) {
         promise.catch(function () {
-          status.textContent = 'Tap again to start.';
+          status.textContent =
+            'Tap again to start.';
+
           status.classList.remove('hidden');
         });
       }
@@ -683,49 +734,52 @@
     function createHls() {
       return new Hls({
         /*
-         * MediaMTX is serving Low-Latency HLS.
+         * MediaMTX is serving LL-HLS.
          */
         lowLatencyMode: true,
 
         /*
-         * Target an actual latency rather than a number of
-         * whole segments.
+         * Use the standard segment-count latency target.
          *
-         * With ~1 second segments, this targets roughly
-         * 0.8 seconds behind the live edge.
+         * Do not force the player to sit only ~0.8s from
+         * the edge; doing so can increase stalls.
          */
-        liveSyncDuration: 0.8,
+        liveSyncDurationCount: 3,
 
         /*
-         * If the player falls more than 2.5 seconds behind,
-         * hls.js will move playback back toward live.
+         * Give the player some room before forcing it back
+         * to the target live position.
          */
-        liveMaxLatencyDuration: 2.5,
+        liveMaxLatencyDurationCount: 6,
 
         /*
-         * Gently accelerate playback when catching up.
+         * IMPORTANT:
+         * Keep playback speed at normal 1.0x.
+         *
+         * Accelerating playback to catch the live edge can
+         * introduce A/V sync problems.
          */
-        maxLiveSyncPlaybackRate: 1.1,
+        maxLiveSyncPlaybackRate: 1,
 
         /*
-         * Small buffers are intentional for a live stream.
+         * Small but not microscopic buffers.
          */
         backBufferLength: 5,
-        maxBufferLength: 2,
-        maxMaxBufferLength: 4,
+        maxBufferLength: 3,
+        maxMaxBufferLength: 6,
 
         /*
-         * Keep the transmuxer in a worker.
+         * Keep transmuxing in a worker.
          */
         enableWorker: true,
 
         /*
-         * Begin at the live position.
+         * Start at the live position.
          */
         startPosition: -1,
 
         /*
-         * This is a live stream, not an infinite VOD timeline.
+         * Treat this as a real live stream.
          */
         liveDurationInfinity: false
       });
@@ -740,7 +794,7 @@
       setupMediaSession();
 
       /*
-       * Muted startup allows mobile autoplay policies.
+       * Start muted for mobile autoplay policy.
        */
       video.muted = true;
 
@@ -752,52 +806,70 @@
 
         hls.attachMedia(video);
 
-        hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-          hls.loadSource(streamUrl);
-        });
-
-        hls.on(Hls.Events.MANIFEST_PARSED, function () {
-          soundBtn.hidden = false;
-          status.classList.add('hidden');
-
-          playNow();
-        });
-
-        hls.on(Hls.Events.ERROR, function (event, data) {
-          if (!data || !data.fatal) return;
-
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              status.textContent = 'Network error. Retrying...';
-              status.classList.remove('hidden');
-
-              hls.startLoad();
-              break;
-
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              status.textContent = 'Media error. Recovering...';
-              status.classList.remove('hidden');
-
-              hls.recoverMediaError();
-              break;
-
-            default:
-              status.textContent = 'Playback failed.';
-              status.classList.remove('hidden');
-
-              if (hls) {
-                hls.destroy();
-                hls = null;
-              }
-              break;
+        hls.on(
+          Hls.Events.MEDIA_ATTACHED,
+          function () {
+            hls.loadSource(streamUrl);
           }
-        });
+        );
+
+        hls.on(
+          Hls.Events.MANIFEST_PARSED,
+          function () {
+            soundBtn.hidden = false;
+            status.classList.add('hidden');
+
+            playNow();
+          }
+        );
+
+        hls.on(
+          Hls.Events.ERROR,
+          function (event, data) {
+            if (!data || !data.fatal) return;
+
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                status.textContent =
+                  'Network error. Retrying...';
+
+                status.classList.remove('hidden');
+
+                hls.startLoad();
+                break;
+
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                status.textContent =
+                  'Media error. Recovering...';
+
+                status.classList.remove('hidden');
+
+                hls.recoverMediaError();
+                break;
+
+              default:
+                status.textContent =
+                  'Playback failed.';
+
+                status.classList.remove('hidden');
+
+                if (hls) {
+                  hls.destroy();
+                  hls = null;
+                }
+
+                break;
+            }
+          }
+        );
 
       } else if (
-        video.canPlayType('application/vnd.apple.mpegurl')
+        video.canPlayType(
+          'application/vnd.apple.mpegurl'
+        )
       ) {
         /*
-         * Native HLS path for browsers such as Safari.
+         * Native HLS path.
          */
         video.src = streamUrl;
 
@@ -820,44 +892,60 @@
       }
     }
 
-    startOverlay.addEventListener('click', startPlayback);
+    startOverlay.addEventListener(
+      'click',
+      startPlayback
+    );
 
-    soundBtn.addEventListener('click', function () {
-      /*
-       * No Web Audio API.
-       *
-       * Just enable the native media element's audio.
-       */
-      video.volume =
-        (parseInt(volSlider.value, 10) || 100) / 100;
+    soundBtn.addEventListener(
+      'click',
+      function () {
+        /*
+         * Keep audio native.
+         */
+        video.volume =
+          (
+            parseInt(
+              volSlider.value,
+              10
+            ) || 100
+          ) / 100;
 
-      video.muted = false;
+        video.muted = false;
 
-      const promise = video.play();
+        const promise = video.play();
 
-      if (promise && typeof promise.catch === 'function') {
-        promise.catch(function () {});
+        if (
+          promise &&
+          typeof promise.catch === 'function'
+        ) {
+          promise.catch(function () {});
+        }
+
+        soundBtn.hidden = true;
+
+        if ('mediaSession' in navigator) {
+          try {
+            navigator.mediaSession.playbackState =
+              'playing';
+          } catch (e) {}
+        }
       }
+    );
 
-      soundBtn.hidden = true;
+    video.addEventListener(
+      'click',
+      function () {
+        if (!started) {
+          startPlayback();
+          return;
+        }
 
-      if ('mediaSession' in navigator) {
-        try {
-          navigator.mediaSession.playbackState = 'playing';
-        } catch (e) {}
+        if (video.paused) {
+          playNow();
+        }
       }
-    });
-
-    video.addEventListener('click', function () {
-      if (!started) {
-        startPlayback();
-        return;
-      }
-
-      if (video.paused) {
-        playNow();
-      }
-    });
+    );
 
     /*
      * ------------------------------
@@ -866,35 +954,58 @@
      */
 
     const chatMessages =
-      document.getElementById('chatMessages');
+      document.getElementById(
+        'chatMessages'
+      );
 
     const chatForm =
-      document.getElementById('chatForm');
+      document.getElementById(
+        'chatForm'
+      );
 
     const nickInput =
-      document.getElementById('nickInput');
+      document.getElementById(
+        'nickInput'
+      );
 
     const msgInput =
-      document.getElementById('msgInput');
+      document.getElementById(
+        'msgInput'
+      );
 
     const sendBtn =
-      document.getElementById('sendBtn');
+      document.getElementById(
+        'sendBtn'
+      );
 
     const chatDot =
-      document.getElementById('chatDot');
+      document.getElementById(
+        'chatDot'
+      );
 
     const chatStatus =
-      document.getElementById('chatStatus');
+      document.getElementById(
+        'chatStatus'
+      );
 
     let chatWs = null;
-    let chatReconnectDelay = CHAT_RECONNECT_MIN;
+    let chatReconnectDelay =
+      CHAT_RECONNECT_MIN;
+
     let chatReconnectTimer = null;
 
     try {
-      const saved = localStorage.getItem('chat_nick');
+      const saved =
+        localStorage.getItem(
+          'chat_nick'
+        );
 
       if (saved) {
-        nickInput.value = saved.slice(0, NICK_MAX);
+        nickInput.value =
+          saved.slice(
+            0,
+            NICK_MAX
+          );
       }
     } catch (e) {}
 
@@ -908,14 +1019,16 @@
 
       } else if (state === 'connecting') {
         chatDot.classList.remove('online');
-        chatStatus.textContent = 'connecting';
+        chatStatus.textContent =
+          'connecting';
 
         msgInput.disabled = true;
         sendBtn.disabled = true;
 
       } else {
         chatDot.classList.remove('online');
-        chatStatus.textContent = 'offline';
+        chatStatus.textContent =
+          'offline';
 
         msgInput.disabled = true;
         sendBtn.disabled = true;
@@ -946,27 +1059,53 @@
     }
 
     function appendSystem(text) {
-      const line = document.createElement('div');
+      const line =
+        document.createElement(
+          'div'
+        );
 
-      line.className = 'chat-line system';
+      line.className =
+        'chat-line system';
+
       line.textContent = text;
 
       pushLine(line);
     }
 
-    function appendMessage(nick, text, ts) {
-      const line = document.createElement('div');
-      line.className = 'chat-line';
+    function appendMessage(
+      nick,
+      text,
+      ts
+    ) {
+      const line =
+        document.createElement(
+          'div'
+        );
 
-      const nickEl = document.createElement('span');
+      line.className =
+        'chat-line';
+
+      const nickEl =
+        document.createElement(
+          'span'
+        );
+
       nickEl.className = 'nick';
       nickEl.textContent = nick;
 
-      const textEl = document.createElement('span');
+      const textEl =
+        document.createElement(
+          'span'
+        );
+
       textEl.className = 'text';
       textEl.textContent = text;
 
-      const tsEl = document.createElement('span');
+      const tsEl =
+        document.createElement(
+          'span'
+        );
+
       tsEl.className = 'ts';
 
       tsEl.textContent =
@@ -986,121 +1125,170 @@
     }
 
     function connectChat() {
-      setChatState('connecting');
+      setChatState(
+        'connecting'
+      );
 
       try {
-        chatWs = new WebSocket(CHAT_URL);
+        chatWs =
+          new WebSocket(
+            CHAT_URL
+          );
+
       } catch (e) {
         scheduleReconnect();
         return;
       }
 
-      chatWs.onopen = function () {
-        chatReconnectDelay = CHAT_RECONNECT_MIN;
+      chatWs.onopen =
+        function () {
+          chatReconnectDelay =
+            CHAT_RECONNECT_MIN;
 
-        setChatState('online');
-        appendSystem('connected');
-      };
+          setChatState('online');
+          appendSystem(
+            'connected'
+          );
+        };
 
-      chatWs.onmessage = function (ev) {
-        let m;
+      chatWs.onmessage =
+        function (ev) {
+          let m;
 
-        try {
-          m = JSON.parse(ev.data);
-        } catch (err) {
-          return;
-        }
+          try {
+            m = JSON.parse(
+              ev.data
+            );
+          } catch (err) {
+            return;
+          }
 
-        if (!m || typeof m.type !== 'string') {
-          return;
-        }
+          if (
+            !m ||
+            typeof m.type !==
+              'string'
+          ) {
+            return;
+          }
 
-        if (m.type === 'msg') {
-          appendMessage(
-            String(m.nick || ''),
-            String(m.text || ''),
-            Number(m.ts) || Date.now()
+          if (
+            m.type === 'msg'
+          ) {
+            appendMessage(
+              String(
+                m.nick || ''
+              ),
+              String(
+                m.text || ''
+              ),
+              Number(m.ts) ||
+                Date.now()
+            );
+
+          } else if (
+            m.type === 'system'
+          ) {
+            appendSystem(
+              String(
+                m.text || ''
+              )
+            );
+          }
+        };
+
+      chatWs.onclose =
+        function () {
+          chatWs = null;
+
+          setChatState(
+            'offline'
           );
 
-        } else if (m.type === 'system') {
-          appendSystem(String(m.text || ''));
-        }
-      };
+          scheduleReconnect();
+        };
 
-      chatWs.onclose = function () {
-        chatWs = null;
-
-        setChatState('offline');
-        scheduleReconnect();
-      };
-
-      chatWs.onerror = function () {};
+      chatWs.onerror =
+        function () {};
     }
 
     function scheduleReconnect() {
-      if (chatReconnectTimer) return;
+      if (chatReconnectTimer) {
+        return;
+      }
 
-      chatReconnectTimer = setTimeout(
-        function () {
-          chatReconnectTimer = null;
-          connectChat();
-        },
-        chatReconnectDelay
-      );
+      chatReconnectTimer =
+        setTimeout(
+          function () {
+            chatReconnectTimer = null;
+            connectChat();
+          },
+          chatReconnectDelay
+        );
 
-      chatReconnectDelay = Math.min(
-        chatReconnectDelay * 2,
-        CHAT_RECONNECT_MAX
-      );
+      chatReconnectDelay =
+        Math.min(
+          chatReconnectDelay * 2,
+          CHAT_RECONNECT_MAX
+        );
     }
 
-    chatForm.addEventListener('submit', function (e) {
-      e.preventDefault();
+    chatForm.addEventListener(
+      'submit',
+      function (e) {
+        e.preventDefault();
 
-      if (
-        !chatWs ||
-        chatWs.readyState !== WebSocket.OPEN
-      ) {
-        return;
-      }
+        if (
+          !chatWs ||
+          chatWs.readyState !==
+            WebSocket.OPEN
+        ) {
+          return;
+        }
 
-      const nick =
-        nickInput.value
-          .trim()
-          .slice(0, NICK_MAX);
+        const nick =
+          nickInput.value
+            .trim()
+            .slice(
+              0,
+              NICK_MAX
+            );
 
-      const text =
-        msgInput.value
-          .trim()
-          .slice(0, MSG_MAX);
+        const text =
+          msgInput.value
+            .trim()
+            .slice(
+              0,
+              MSG_MAX
+            );
 
-      if (!nick) {
-        nickInput.focus();
-        return;
-      }
+        if (!nick) {
+          nickInput.focus();
+          return;
+        }
 
-      if (!text) {
-        return;
-      }
+        if (!text) {
+          return;
+        }
 
-      try {
-        localStorage.setItem(
-          'chat_nick',
-          nick
+        try {
+          localStorage.setItem(
+            'chat_nick',
+            nick
+          );
+        } catch (err) {}
+
+        chatWs.send(
+          JSON.stringify({
+            type: 'msg',
+            nick: nick,
+            text: text
+          })
         );
-      } catch (err) {}
 
-      chatWs.send(
-        JSON.stringify({
-          type: 'msg',
-          nick: nick,
-          text: text
-        })
-      );
-
-      msgInput.value = '';
-      msgInput.focus();
-    });
+        msgInput.value = '';
+        msgInput.focus();
+      }
+    );
 
     connectChat();
   </script>
