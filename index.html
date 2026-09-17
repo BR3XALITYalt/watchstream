@@ -30,6 +30,32 @@ body{overflow:hidden}
 
 .video{
 	min-width:0;
+	display:flex;
+	flex-direction:column;
+	min-height:0;
+}
+
+.announcement{
+	background:#1b2440;
+	border:1px solid #2f3d6a;
+	border-radius:6px;
+	padding:8px 12px;
+	margin-bottom:8px;
+	font-size:14px;
+	line-height:1.4;
+	color:#dbe4ff;
+	text-align:center;
+	word-wrap:break-word;
+	overflow-wrap:anywhere;
+	flex:0 0 auto;
+}
+
+.announcement[hidden]{display:none}
+
+.announcement:before{
+	content:"Pinned: ";
+	color:#8fa3ff;
+	font-weight:bold;
 }
 
 .player{
@@ -37,6 +63,7 @@ body{overflow:hidden}
 	background:#000;
 	aspect-ratio:16/9;
 	overflow:hidden;
+	flex:0 0 auto;
 }
 
 video{
@@ -60,6 +87,7 @@ video{
 	gap:10px;
 	cursor:pointer;
 	font:inherit;
+	z-index:4;
 }
 
 .start.hidden{display:none}
@@ -68,6 +96,32 @@ video{
 	width:64px;
 	height:64px;
 	fill:#ddd;
+}
+
+.reaction-layer{
+	position:absolute;
+	inset:0;
+	pointer-events:none;
+	overflow:hidden;
+	z-index:3;
+}
+
+.reaction{
+	position:absolute;
+	bottom:-40px;
+	line-height:1;
+	will-change:transform,opacity;
+	animation-name:floatUp;
+	animation-timing-function:cubic-bezier(0.22,0.61,0.36,1);
+	animation-fill-mode:forwards;
+	filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+	user-select:none;
+}
+
+@keyframes floatUp{
+	0%{transform:translate3d(0,0,0) scale(var(--s,1));opacity:0}
+	15%{opacity:1}
+	100%{transform:translate3d(var(--dx,0px),calc(-1 * var(--dy,160px)),0) scale(var(--s2,1.1));opacity:0}
 }
 
 .fs{
@@ -80,6 +134,7 @@ video{
 	background:#111b;
 	color:#fff;
 	cursor:pointer;
+	z-index:5;
 }
 
 .fs svg{
@@ -115,6 +170,89 @@ video{
 	padding:8px 12px;
 	cursor:pointer;
 }
+
+.statusbar{
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	gap:10px;
+	margin-top:7px;
+	flex-wrap:wrap;
+}
+
+.status-badge{
+	display:inline-flex;
+	align-items:center;
+	gap:6px;
+	padding:3px 10px;
+	border-radius:999px;
+	background:#161616;
+	border:1px solid #2a2a2a;
+	font-size:11px;
+	font-weight:bold;
+	letter-spacing:0.06em;
+	color:#bbb;
+}
+
+.status-dot{
+	width:8px;
+	height:8px;
+	border-radius:50%;
+	background:#666;
+	flex:0 0 auto;
+}
+
+.status-badge[data-state="live"]{color:#22c55e;border-color:#1a3a24}
+.status-badge[data-state="live"] .status-dot{
+	background:#22c55e;
+	box-shadow:0 0 6px rgba(34,197,94,0.55);
+	animation:pulse 1.6s ease-in-out infinite;
+}
+.status-badge[data-state="connecting"]{color:#eab308;border-color:#3a3317}
+.status-badge[data-state="connecting"] .status-dot{background:#eab308}
+.status-badge[data-state="offline"]{color:#888}
+.status-badge[data-state="offline"] .status-dot{background:#888}
+.status-badge[data-state="error"]{color:#ef4444;border-color:#3a1a1a}
+.status-badge[data-state="error"] .status-dot{background:#ef4444}
+
+@keyframes pulse{
+	0%,100%{opacity:1}
+	50%{opacity:0.45}
+}
+
+.viewers{
+	font-size:12px;
+	color:#888;
+	font-variant-numeric:tabular-nums;
+}
+
+.reactions{
+	display:flex;
+	gap:6px;
+	margin-top:8px;
+	flex-wrap:wrap;
+}
+
+.reactions button{
+	background:#161616;
+	border:1px solid #2a2a2a;
+	border-radius:999px;
+	padding:4px 12px;
+	font-size:20px;
+	line-height:1;
+	cursor:pointer;
+	min-width:48px;
+	min-height:44px;
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	color:#ddd;
+	transition:transform 0.12s ease,background 0.15s ease;
+}
+
+.reactions button:hover{background:#222}
+.reactions button:active{transform:scale(0.92)}
+.reactions button:focus-visible{outline:2px solid #4d6bfe;outline-offset:2px}
 
 .status{
 	margin-top:7px;
@@ -242,9 +380,14 @@ video{
 <div class="layout">
 
 	<div class="video">
+
+		<div class="announcement" id="announcement" hidden></div>
+
 		<div class="player">
 
-			<video id="video" playsinline preload="none" muted></video>
+			<video id="video" playsinline preload="none"></video>
+
+			<div class="reaction-layer" id="reactionLayer" aria-hidden="true"></div>
 
 			<button class="start" id="start">
 				<svg viewBox="0 0 24 24">
@@ -267,7 +410,24 @@ video{
 			<input id="volume" type="range" min="0" max="100" value="100">
 		</div>
 
-		<div id="status" class="status"></div>
+		<div class="statusbar">
+			<span class="status-badge" id="statusBadge" data-state="connecting">
+				<span class="status-dot"></span>
+				<span id="statusText">CONNECTING</span>
+			</span>
+			<span class="viewers" title="Live viewers">
+				<span id="viewersCount">0</span> watching
+			</span>
+		</div>
+
+		<div class="reactions" id="reactions" role="group" aria-label="Send a reaction">
+			<button type="button" data-emoji="👍" aria-label="Like">👍</button>
+			<button type="button" data-emoji="🤣" aria-label="Laugh">🤣</button>
+			<button type="button" data-emoji="🫩" aria-label="Tired">🫩</button>
+			<button type="button" data-emoji="😭" aria-label="Cry">😭</button>
+		</div>
+
+		<div id="status" class="status hidden"></div>
 	</div>
 
 	<div class="chat">
@@ -280,9 +440,9 @@ video{
 			</span>
 		</div>
 
-		<div class="messages" id="messages"></div>
+		<div class="messages" id="messages" role="log" aria-live="polite"></div>
 
-		<form class="chat-form" id="chatForm">
+		<form class="chat-form" id="chatForm" autocomplete="off">
 			<input
 				class="name"
 				id="nick"
@@ -295,7 +455,7 @@ video{
 				class="message"
 				id="message"
 				type="text"
-				placeholder="message"
+				placeholder="message or /help"
 				maxlength="300"
 				disabled
 			>
@@ -307,7 +467,7 @@ video{
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js/dist/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
 
 <script>
 const STREAM = 'https://rtmp.br3xality.org/live/index.m3u8';
@@ -320,6 +480,12 @@ const fsIcon = document.getElementById('fsIcon');
 const sound = document.getElementById('sound');
 const volume = document.getElementById('volume');
 const status = document.getElementById('status');
+const statusBadge = document.getElementById('statusBadge');
+const statusText = document.getElementById('statusText');
+const viewersCount = document.getElementById('viewersCount');
+const announcementEl = document.getElementById('announcement');
+const reactionLayer = document.getElementById('reactionLayer');
+const reactionsEl = document.getElementById('reactions');
 
 const messages = document.getElementById('messages');
 const chatForm = document.getElementById('chatForm');
@@ -329,21 +495,51 @@ const send = document.getElementById('send');
 const dot = document.getElementById('dot');
 const chatStatus = document.getElementById('chatStatus');
 
+const NICK_MAX = 20;
+const MSG_MAX = 300;
+const MAX_CHAT_LINES = 200;
+const MAX_REACTIONS = 30;
+const RECONNECT_MIN = 1000;
+const RECONNECT_MAX = 30000;
+const MAX_DRIFT = 5;
+
 let hls;
 let started = false;
 let ws;
-let reconnect = 1000;
+let reconnect = RECONNECT_MIN;
 let reconnectTimer;
+let unmuted = false;
 
 video.volume = 1;
 video.muted = true;
+video.preservesPitch = true;
+video.webkitPreservesPitch = true;
+video.mozPreservesPitch = true;
 
-function playVideo(){
-	video.play().catch(function(){
-		status.textContent = 'Tap again to start.';
-		status.classList.remove('hidden');
-	});
+/* ---------- stream status ---------- */
+
+const STATE_LABELS = {
+	live: 'LIVE',
+	connecting: 'CONNECTING',
+	offline: 'OFFLINE',
+	error: 'PLAYBACK ERROR'
+};
+
+let streamState = null;
+
+function setStreamState(s){
+	if(streamState === s) return;
+	streamState = s;
+	statusBadge.dataset.state = s;
+	statusText.textContent = STATE_LABELS[s] || s.toUpperCase();
 }
+
+setStreamState('connecting');
+
+/* ---------- fullscreen ---------- */
+
+const ICON_IN  = 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
+const ICON_OUT = 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
 
 function fullscreen(){
 	if(document.fullscreenElement){
@@ -353,43 +549,84 @@ function fullscreen(){
 	}
 }
 
-fs.onclick = fullscreen;
+fs.onclick = function(e){
+	e.stopPropagation();
+	fullscreen();
+};
 
 document.onfullscreenchange = function(){
 	const path = document.querySelector('#fsIcon path');
-
-	if(document.fullscreenElement){
-		path.setAttribute('d','M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z');
-	}else{
-		path.setAttribute('d','M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z');
-	}
+	path.setAttribute('d', document.fullscreenElement ? ICON_OUT : ICON_IN);
 };
 
 volume.oninput = function(){
 	video.volume = volume.value / 100;
 };
 
+/* ---------- viewer id (persistent) ---------- */
+
+function getViewerId(){
+	try{
+		let id = localStorage.getItem('viewer_id');
+		if(!id || id.length < 8){
+			id = (window.crypto && crypto.randomUUID)
+				? crypto.randomUUID()
+				: ('v-' + Math.random().toString(36).slice(2) + Date.now().toString(36));
+			localStorage.setItem('viewer_id', id);
+		}
+		return id;
+	}catch(e){
+		return 'v-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+	}
+}
+
+const VIEWER_ID = getViewerId();
+
+/* ---------- nickname persistence ---------- */
+
+try{
+	const saved = localStorage.getItem('chat_nick');
+	if(saved && typeof saved === 'string'){
+		nick.value = saved.replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,NICK_MAX);
+	}
+}catch(e){}
+
+/* ---------- video playback ---------- */
+
+function playVideo(){
+	video.play().catch(function(){
+		status.textContent = 'Tap again to start.';
+		status.classList.remove('hidden');
+	});
+}
+
+function handleUnmute(){
+	if(!unmuted){
+		unmuted = true;
+		video.muted = false;
+		status.classList.add('hidden');
+	}
+	if(video.paused) playVideo();
+}
+
 function startVideo(){
 	if(started) return;
 
 	started = true;
 	start.classList.add('hidden');
-	status.textContent = 'Connecting...';
+	status.classList.add('hidden');
 
 	video.muted = true;
 
 	if(Hls.isSupported()){
 		hls = new Hls({
-			lowLatencyMode:true,
-			liveSyncDurationCount:3,
-			liveMaxLatencyDurationCount:6,
-			maxLiveSyncPlaybackRate:1,
-			backBufferLength:5,
-			maxBufferLength:3,
-			maxMaxBufferLength:6,
-			enableWorker:true,
-			startPosition:-1,
-			liveDurationInfinity:false
+			lowLatencyMode: false,
+			backBufferLength: 30,
+			liveSyncDurationCount: 3,
+			liveMaxLatencyDurationCount: 10,
+			liveDurationInfinity: true,
+			enableWorker: true,
+			startPosition: -1
 		});
 
 		hls.attachMedia(video);
@@ -400,7 +637,6 @@ function startVideo(){
 
 		hls.on(Hls.Events.MANIFEST_PARSED,function(){
 			sound.hidden = false;
-			status.classList.add('hidden');
 			playVideo();
 		});
 
@@ -408,53 +644,110 @@ function startVideo(){
 			if(!data.fatal) return;
 
 			if(data.type === Hls.ErrorTypes.NETWORK_ERROR){
-				status.textContent = 'Network error. Retrying...';
-				hls.startLoad();
+				setStreamState('offline');
+				setTimeout(function(){
+					if(hls){ try{ hls.startLoad(); }catch(e){} }
+				},2000);
 			}else if(data.type === Hls.ErrorTypes.MEDIA_ERROR){
-				status.textContent = 'Media error. Recovering...';
-				hls.recoverMediaError();
+				setStreamState('error');
+				try{ hls.recoverMediaError(); }catch(e){}
 			}else{
-				status.textContent = 'Playback failed.';
-				hls.destroy();
+				setStreamState('error');
+				try{ hls.destroy(); }catch(e){}
+				hls = null;
 			}
+		});
+
+		setInterval(function(){
+			if(!hls || !hls.latency || video.paused) return;
+			if(hls.latency > MAX_DRIFT){
+				const target = hls.liveSyncPosition;
+				if(typeof target === 'number' && isFinite(target)){
+					video.currentTime = target;
+				}
+			}
+		},3000);
+
+		video.addEventListener('waiting',function(){
+			if(streamState === 'live') setStreamState('connecting');
+			setTimeout(function(){
+				if(video.readyState < 3 && !video.paused && hls){
+					const target = hls.liveSyncPosition;
+					if(typeof target === 'number' && isFinite(target)){
+						video.currentTime = target;
+					}
+				}
+			},1500);
+		});
+
+		video.addEventListener('playing',function(){ setStreamState('live'); });
+		video.addEventListener('stalled',function(){
+			if(streamState === 'live') setStreamState('connecting');
 		});
 
 	}else if(video.canPlayType('application/vnd.apple.mpegurl')){
 		video.src = STREAM;
-
 		video.onloadedmetadata = function(){
 			sound.hidden = false;
-			status.classList.add('hidden');
 			playVideo();
 		};
 	}else{
+		setStreamState('error');
 		status.textContent = 'HLS is not supported in this browser.';
+		status.classList.remove('hidden');
 	}
 }
 
 start.onclick = startVideo;
 
 sound.onclick = function(){
-	video.volume = volume.value / 100;
-	video.muted = false;
-	playVideo();
+	handleUnmute();
 	sound.hidden = true;
 };
 
 video.onclick = function(){
 	if(!started){
 		startVideo();
-	}else if(video.paused){
-		playVideo();
+	}else{
+		handleUnmute();
 	}
 };
 
+/* ---------- reactions overlay ---------- */
 
-/* chat */
+function spawnReaction(emoji){
+	if(!emoji || !reactionLayer) return;
 
-try{
-	nick.value = localStorage.getItem('chat_nick') || '';
-}catch(e){}
+	const el = document.createElement('div');
+	el.className = 'reaction';
+	el.textContent = emoji;
+
+	const left = 8 + Math.random() * 78;
+	const dx = (Math.random() - 0.5) * 50;
+	const dy = 120 + Math.random() * 100;
+	const s = 0.75 + Math.random() * 0.6;
+	const s2 = s + 0.15 + Math.random() * 0.15;
+	const dur = 1500 + Math.random() * 1000;
+	const fontSize = 20 + Math.random() * 16;
+
+	el.style.left = left.toFixed(1) + '%';
+	el.style.setProperty('--dx', dx.toFixed(1) + 'px');
+	el.style.setProperty('--dy', dy.toFixed(0) + 'px');
+	el.style.setProperty('--s', s.toFixed(2));
+	el.style.setProperty('--s2', s2.toFixed(2));
+	el.style.animationDuration = dur.toFixed(0) + 'ms';
+	el.style.fontSize = fontSize.toFixed(0) + 'px';
+
+	reactionLayer.appendChild(el);
+
+	el.addEventListener('animationend', function(){ el.remove(); }, { once:true });
+
+	while(reactionLayer.children.length > MAX_REACTIONS){
+		reactionLayer.removeChild(reactionLayer.firstChild);
+	}
+}
+
+/* ---------- chat state ---------- */
 
 function chatState(state){
 	if(state === 'online'){
@@ -483,7 +776,7 @@ function addLine(el){
 
 	messages.appendChild(el);
 
-	while(messages.children.length > 200)
+	while(messages.children.length > MAX_CHAT_LINES)
 		messages.firstChild.remove();
 
 	if(bottom)
@@ -500,8 +793,6 @@ function system(text){
 function msg(name,text,time){
 	const el = document.createElement('div');
 	el.className = 'line';
-
-	el.innerHTML = '';
 
 	const n = document.createElement('span');
 	n.className = 'nick';
@@ -521,6 +812,23 @@ function msg(name,text,time){
 	addLine(el);
 }
 
+function setViewers(n){
+	viewersCount.textContent = String(n);
+}
+
+function setAnnouncement(text){
+	const clean = (text == null ? '' : String(text)).trim();
+	if(clean){
+		announcementEl.textContent = clean;
+		announcementEl.hidden = false;
+	}else{
+		announcementEl.textContent = '';
+		announcementEl.hidden = true;
+	}
+}
+
+/* ---------- websocket ---------- */
+
 function connect(){
 	chatState('connecting');
 
@@ -532,9 +840,11 @@ function connect(){
 	}
 
 	ws.onopen = function(){
-		reconnect = 1000;
+		reconnect = RECONNECT_MIN;
 		chatState('online');
-		system('connected');
+		try{
+			ws.send(JSON.stringify({ type:'hello', viewerId: VIEWER_ID }));
+		}catch(e){}
 	};
 
 	ws.onmessage = function(e){
@@ -548,16 +858,48 @@ function connect(){
 
 		if(!data || typeof data.type !== 'string') return;
 
-		if(data.type === 'msg'){
-			msg(
-				String(data.nick || ''),
-				String(data.text || ''),
-				Number(data.ts) || Date.now()
-			);
-		}
+		switch(data.type){
+			case 'msg':
+				msg(
+					String(data.nick || ''),
+					String(data.text || ''),
+					Number(data.ts) || Date.now()
+				);
+				break;
 
-		if(data.type === 'system'){
-			system(String(data.text || ''));
+			case 'system':
+				system(String(data.text || ''));
+				break;
+
+			case 'history':
+				if(Array.isArray(data.messages)){
+					for(let i = 0; i < data.messages.length; i++){
+						const item = data.messages[i];
+						if(!item || typeof item !== 'object') continue;
+						if(item.type === 'msg'){
+							msg(
+								String(item.nick || ''),
+								String(item.text || ''),
+								Number(item.ts) || Date.now()
+							);
+						}else if(item.type === 'system'){
+							system(String(item.text || ''));
+						}
+					}
+				}
+				break;
+
+			case 'viewers':
+				setViewers(Number(data.count) || 0);
+				break;
+
+			case 'announcement':
+				setAnnouncement(data.text);
+				break;
+
+			case 'reaction':
+				spawnReaction(String(data.emoji || ''));
+				break;
 		}
 	};
 
@@ -566,6 +908,8 @@ function connect(){
 		chatState('offline');
 		retry();
 	};
+
+	ws.onerror = function(){};
 }
 
 function retry(){
@@ -576,7 +920,7 @@ function retry(){
 		connect();
 	},reconnect);
 
-	reconnect = Math.min(reconnect * 2,30000);
+	reconnect = Math.min(reconnect * 2, RECONNECT_MAX);
 }
 
 chatForm.onsubmit = function(e){
@@ -584,8 +928,8 @@ chatForm.onsubmit = function(e){
 
 	if(!ws || ws.readyState !== WebSocket.OPEN) return;
 
-	const name = nick.value.trim().slice(0,20);
-	const text = message.value.trim().slice(0,300);
+	const name = nick.value.replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,NICK_MAX);
+	const text = message.value.replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,MSG_MAX);
 
 	if(!name){
 		nick.focus();
@@ -598,15 +942,28 @@ chatForm.onsubmit = function(e){
 		localStorage.setItem('chat_nick',name);
 	}catch(e){}
 
-	ws.send(JSON.stringify({
-		type:'msg',
-		nick:name,
-		text:text
-	}));
+	try{
+		ws.send(JSON.stringify({
+			type:'msg',
+			nick:name,
+			text:text
+		}));
+	}catch(e){}
 
 	message.value = '';
 	message.focus();
 };
+
+reactionsEl.addEventListener('click', function(e){
+	const btn = e.target.closest ? e.target.closest('button[data-emoji]') : null;
+	if(!btn) return;
+	const emoji = btn.getAttribute('data-emoji');
+	if(!emoji) return;
+	if(!ws || ws.readyState !== WebSocket.OPEN) return;
+	try{
+		ws.send(JSON.stringify({ type:'reaction', emoji: emoji }));
+	}catch(e){}
+});
 
 connect();
 </script>
