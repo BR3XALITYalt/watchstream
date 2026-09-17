@@ -1,1296 +1,615 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BR3XALITY Live</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BR3XALITY Live</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<style>
+*{box-sizing:border-box}
 
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      background: #0d0d0d;
-      color: #e5e5e5;
-      font-family: system-ui, -apple-system, sans-serif;
-      height: 100%;
-      overflow: hidden;
-    }
+html,body{
+	margin:0;
+	height:100%;
+	background:#0d0d0d;
+	color:#ddd;
+	font-family:Arial,sans-serif;
+}
 
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 340px;
-      gap: 16px;
-      width: 100%;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 16px;
-      height: 100vh;
-      height: 100dvh;
-      min-height: 0;
-    }
+body{overflow:hidden}
 
-    @media (max-width: 900px) {
-      html,
-      body {
-        overflow: auto;
-      }
+.layout{
+	display:grid;
+	grid-template-columns:minmax(0,1fr) 340px;
+	gap:12px;
+	max-width:1400px;
+	height:100vh;
+	margin:auto;
+	padding:12px;
+}
 
-      .layout {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(300px, 1fr);
-        gap: 12px;
-        padding: 12px;
-        height: auto;
-        min-height: 100vh;
-        min-height: 100dvh;
-      }
-    }
+.video{
+	min-width:0;
+}
 
-    .video-col {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      min-height: 0;
-    }
+.player{
+	position:relative;
+	background:#000;
+	aspect-ratio:16/9;
+	overflow:hidden;
+}
 
-    .player {
-      position: relative;
-      line-height: 0;
-      flex: 0 0 auto;
-      background: #000;
-      border-radius: 8px;
-      overflow: hidden;
-      aspect-ratio: 16 / 9;
-    }
+video{
+	width:100%;
+	height:100%;
+	display:block;
+	background:#000;
+	object-fit:contain;
+}
 
-    video {
-      width: 100%;
-      height: 100%;
-      background: #000;
-      cursor: pointer;
-      display: block;
-      object-fit: contain;
-    }
+.start{
+	position:absolute;
+	inset:0;
+	border:0;
+	background:#000;
+	color:#ddd;
+	display:flex;
+	flex-direction:column;
+	align-items:center;
+	justify-content:center;
+	gap:10px;
+	cursor:pointer;
+	font:inherit;
+}
 
-    video:fullscreen {
-      border-radius: 0;
-    }
+.start.hidden{display:none}
 
-    .start-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      background: #000;
-      color: #e5e5e5;
-      cursor: pointer;
-      border: none;
-      padding: 0;
-      font: inherit;
-      text-align: center;
-      z-index: 5;
-    }
+.start svg{
+	width:64px;
+	height:64px;
+	fill:#ddd;
+}
 
-    .start-overlay.hidden {
-      display: none;
-    }
+.fs{
+	position:absolute;
+	right:8px;
+	bottom:8px;
+	width:38px;
+	height:38px;
+	border:0;
+	background:#111b;
+	color:#fff;
+	cursor:pointer;
+}
 
-    .start-overlay svg {
-      width: 72px;
-      height: 72px;
-      fill: #e5e5e5;
-      opacity: 0.9;
-    }
+.fs svg{
+	width:20px;
+	height:20px;
+	fill:currentColor;
+}
 
-    .start-overlay .label {
-      font-size: 15px;
-      font-weight: 500;
-      letter-spacing: 0.02em;
-    }
+.controls{
+	display:flex;
+	align-items:center;
+	gap:10px;
+	margin-top:8px;
+	padding:8px;
+	background:#151515;
+	border:1px solid #282828;
+}
 
-    .fs-btn {
-      position: absolute;
-      right: 10px;
-      bottom: 10px;
-      width: 40px;
-      height: 40px;
-      padding: 0;
-      border: none;
-      border-radius: 6px;
-      background: rgba(0, 0, 0, 0.55);
-      color: #fff;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.15s ease;
-      z-index: 6;
-    }
+.controls label{
+	font-size:12px;
+	color:#888;
+}
 
-    .fs-btn:hover {
-      background: rgba(0, 0, 0, 0.8);
-    }
+.controls input{
+	flex:1;
+}
 
-    .fs-btn:focus-visible {
-      outline: 2px solid #4d6bfe;
-      outline-offset: 2px;
-    }
+.controls button,
+.chat-form button{
+	border:0;
+	background:#4169e1;
+	color:white;
+	padding:8px 12px;
+	cursor:pointer;
+}
 
-    .fs-btn svg {
-      width: 20px;
-      height: 20px;
-      fill: currentColor;
-      pointer-events: none;
-    }
+.status{
+	margin-top:7px;
+	text-align:center;
+	color:#777;
+	font-size:13px;
+}
 
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 10px;
-      padding: 8px 12px;
-      background: #151515;
-      border: 1px solid #262626;
-      border-radius: 8px;
-      flex-wrap: wrap;
-    }
+.status.hidden{display:none}
 
-    .controls label {
-      font-size: 12px;
-      color: #888;
-      flex: 0 0 auto;
-    }
+.chat{
+	display:flex;
+	flex-direction:column;
+	min-height:0;
+	overflow:hidden;
+	background:#151515;
+	border:1px solid #282828;
+}
 
-    .controls input[type="range"] {
-      flex: 1;
-      min-width: 100px;
-      -webkit-appearance: none;
-      appearance: none;
-      height: 4px;
-      background: #2e2e2e;
-      border-radius: 2px;
-      outline: none;
-    }
+.chat-header{
+	padding:10px 12px;
+	border-bottom:1px solid #282828;
+	font-size:13px;
+	display:flex;
+	justify-content:space-between;
+}
 
-    .controls input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 16px;
-      height: 16px;
-      background: #4d6bfe;
-      border-radius: 50%;
-      cursor: pointer;
-    }
+.chat-state{
+	color:#666;
+	font-size:11px;
+}
 
-    .controls input[type="range"]::-moz-range-thumb {
-      width: 16px;
-      height: 16px;
-      background: #4d6bfe;
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-    }
+.dot{
+	display:inline-block;
+	width:7px;
+	height:7px;
+	margin-right:5px;
+	border-radius:50%;
+	background:#444;
+}
 
-    .controls input[type="range"]:focus-visible {
-      outline: 2px solid #4d6bfe;
-      outline-offset: 2px;
-    }
+.dot.online{background:#22c55e}
 
-    .controls button {
-      background: #4d6bfe;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 14px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      font-family: inherit;
-      flex: 0 0 auto;
-    }
+.messages{
+	flex:1;
+	min-height:0;
+	overflow-y:auto;
+	padding:10px 12px;
+	font-size:14px;
+	line-height:1.4;
+}
 
-    .controls button:hover {
-      background: #3a55e0;
-    }
+.line{
+	margin-bottom:6px;
+	word-break:break-word;
+}
 
-    .controls button:focus-visible {
-      outline: 2px solid #4d6bfe;
-      outline-offset: 2px;
-    }
+.nick{
+	color:#4d6bfe;
+	font-weight:bold;
+}
 
-    .controls button[hidden] {
-      display: none;
-    }
+.nick:after{
+	content:":";
+	color:#555;
+	margin-right:4px;
+}
 
-    .status {
-      color: #888;
-      font-size: 14px;
-      margin-top: 8px;
-      text-align: center;
-      line-height: 1.4;
-    }
+.time{
+	color:#555;
+	font-size:11px;
+	margin-left:6px;
+}
 
-    .status.hidden {
-      display: none;
-    }
+.system{
+	color:#666;
+	font-size:12px;
+	font-style:italic;
+}
 
-    .chat {
-      background: #151515;
-      border: 1px solid #262626;
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      overflow: hidden;
-    }
+.chat-form{
+	display:flex;
+	gap:5px;
+	padding:8px;
+	border-top:1px solid #282828;
+	background:#111;
+}
 
-    .chat-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 14px;
-      border-bottom: 1px solid #262626;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      color: #e5e5e5;
-      flex: 0 0 auto;
-    }
+.chat-form input{
+	min-width:0;
+	border:1px solid #333;
+	background:#1c1c1c;
+	color:#ddd;
+	padding:8px;
+	font:inherit;
+}
 
-    .chat-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-weight: 400;
-      color: #666;
-    }
+.chat-form .name{
+	width:70px;
+}
 
-    .chat-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #444;
-      transition: background 0.2s ease;
-    }
+.chat-form .message{
+	flex:1;
+}
 
-    .chat-dot.online {
-      background: #22c55e;
-    }
+@media(max-width:900px){
+	body{overflow:auto}
 
-    .chat-messages {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 10px 14px;
-      font-size: 14px;
-      line-height: 1.5;
-      color: #d4d4d4;
-      word-wrap: break-word;
-      overflow-wrap: anywhere;
-    }
+	.layout{
+		display:flex;
+		flex-direction:column;
+		height:auto;
+		min-height:100vh;
+	}
 
-    .chat-messages::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .chat-messages::-webkit-scrollbar-track {
-      background: #151515;
-    }
-
-    .chat-messages::-webkit-scrollbar-thumb {
-      background: #2e2e2e;
-      border-radius: 4px;
-    }
-
-    .chat-line {
-      margin: 0 0 6px;
-      line-height: 1.5;
-    }
-
-    .chat-line .nick {
-      color: #4d6bfe;
-      font-weight: 600;
-      margin-right: 4px;
-    }
-
-    .chat-line .nick::after {
-      content: ":";
-      color: #555;
-      margin-left: 1px;
-      font-weight: 400;
-    }
-
-    .chat-line .ts {
-      color: #4a4a4a;
-      font-size: 11px;
-      margin-left: 6px;
-    }
-
-    .chat-line.system {
-      color: #666;
-      font-style: italic;
-      font-size: 12px;
-    }
-
-    .chat-form {
-      display: flex;
-      gap: 6px;
-      padding: 10px;
-      border-top: 1px solid #262626;
-      background: #121212;
-      flex: 0 0 auto;
-    }
-
-    .chat-form input {
-      background: #1e1e1e;
-      border: 1px solid #2e2e2e;
-      border-radius: 6px;
-      padding: 8px 10px;
-      color: #e5e5e5;
-      font-size: 14px;
-      font-family: inherit;
-      min-width: 0;
-    }
-
-    .chat-form input:focus {
-      outline: none;
-      border-color: #4d6bfe;
-    }
-
-    .chat-form input.nick {
-      flex: 0 0 72px;
-    }
-
-    .chat-form input.msg {
-      flex: 1;
-    }
-
-    .chat-form button {
-      background: #4d6bfe;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 0 14px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-
-    .chat-form button:hover {
-      background: #3a55e0;
-    }
-
-    .chat-form button:disabled {
-      background: #262626;
-      color: #555;
-      cursor: not-allowed;
-    }
-
-    .chat-form button:focus-visible {
-      outline: 2px solid #4d6bfe;
-      outline-offset: 2px;
-    }
-  </style>
+	.chat{
+		height:400px;
+	}
+}
+</style>
 </head>
 
 <body>
-  <div class="layout">
-    <div class="video-col">
-      <div class="player">
-        <video
-          id="video"
-          playsinline
-          preload="none"
-          muted
-          disableremoteplayback
-        ></video>
-
-        <button
-          class="start-overlay"
-          id="startOverlay"
-          type="button"
-          aria-label="Start live stream"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
-
-          <span class="label">Tap to play live</span>
-        </button>
-
-        <button
-          class="fs-btn"
-          id="fsBtn"
-          aria-label="Toggle fullscreen"
-          type="button"
-        >
-          <svg id="fsIcon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="controls">
-        <button id="soundBtn" type="button" hidden>
-          Enable sound
-        </button>
-
-        <label for="volSlider">Volume</label>
-
-        <input
-          type="range"
-          id="volSlider"
-          min="0"
-          max="100"
-          value="100"
-          step="1"
-          aria-label="Volume"
-        >
-      </div>
-
-      <div class="status" id="status"></div>
-    </div>
-
-    <aside class="chat">
-      <div class="chat-header">
-        <span>Chat</span>
-
-        <span class="chat-status">
-          <span class="chat-dot" id="chatDot"></span>
-          <span id="chatStatus">connecting</span>
-        </span>
-      </div>
-
-      <div
-        class="chat-messages"
-        id="chatMessages"
-        role="log"
-        aria-live="polite"
-        aria-label="Chat messages"
-      ></div>
-
-      <form
-        class="chat-form"
-        id="chatForm"
-        autocomplete="off"
-      >
-        <input
-          class="nick"
-          id="nickInput"
-          type="text"
-          placeholder="nick"
-          maxlength="20"
-          aria-label="Nickname"
-        >
-
-        <input
-          class="msg"
-          id="msgInput"
-          type="text"
-          placeholder="message"
-          maxlength="300"
-          disabled
-          aria-label="Message"
-        >
-
-        <button id="sendBtn" type="submit" disabled>
-          Send
-        </button>
-      </form>
-    </aside>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/hls.js/dist/hls.min.js"></script>
-
-  <script>
-    const streamUrl = 'https://rtmp.br3xality.org/live/index.m3u8';
-    const CHAT_URL = 'wss://chat.br3xality.org/';
-
-    const NICK_MAX = 20;
-    const MSG_MAX = 300;
-    const MAX_CHAT_LINES = 200;
-
-    const CHAT_RECONNECT_MIN = 1000;
-    const CHAT_RECONNECT_MAX = 30000;
-
-    const video = document.getElementById('video');
-    const fsBtn = document.getElementById('fsBtn');
-    const fsIcon = document.getElementById('fsIcon');
-    const status = document.getElementById('status');
-    const startOverlay = document.getElementById('startOverlay');
-    const volSlider = document.getElementById('volSlider');
-    const soundBtn = document.getElementById('soundBtn');
-
-    const ICON_ENTER =
-      'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
-
-    const ICON_EXIT =
-      'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
-
-    let started = false;
-    let hls = null;
-
-    /*
-     * Keep the browser's native audio pipeline.
-     * Do not create an AudioContext or MediaElementAudioSourceNode.
-     *
-     * This avoids adding another timing clock to Firefox's
-     * audio/video pipeline.
-     */
-    video.preservesPitch = true;
-    video.volume = 1;
-    video.muted = true;
-
-    try {
-      video.disableRemotePlayback = true;
-    } catch (e) {}
-
-    function setupMediaSession() {
-      if (!('mediaSession' in navigator)) return;
-
-      try {
-        if (window.MediaMetadata) {
-          navigator.mediaSession.metadata = new MediaMetadata({
-            title: 'BR3XALITY Live',
-            artist: 'BR3XALITY',
-            album: 'Live Stream'
-          });
-        }
-      } catch (e) {}
-
-      try {
-        navigator.mediaSession.setActionHandler(
-          'play',
-          function () {
-            video.play().catch(function () {});
-          }
-        );
-      } catch (e) {}
-
-      try {
-        navigator.mediaSession.setActionHandler(
-          'pause',
-          function () {}
-        );
-      } catch (e) {}
-
-      try {
-        navigator.mediaSession.setActionHandler(
-          'stop',
-          function () {}
-        );
-      } catch (e) {}
-
-      try {
-        navigator.mediaSession.setActionHandler(
-          'seekbackward',
-          function () {}
-        );
-
-        navigator.mediaSession.setActionHandler(
-          'seekforward',
-          function () {}
-        );
-
-        navigator.mediaSession.setActionHandler(
-          'seekto',
-          function () {}
-        );
-      } catch (e) {}
-    }
-
-    video.addEventListener('playing', function () {
-      if ('mediaSession' in navigator) {
-        try {
-          navigator.mediaSession.playbackState = 'playing';
-        } catch (e) {}
-      }
-    });
-
-    video.addEventListener('pause', function () {
-      if ('mediaSession' in navigator) {
-        try {
-          navigator.mediaSession.playbackState = 'paused';
-        } catch (e) {}
-      }
-    });
-
-    function isFullscreen() {
-      return !!(
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.msFullscreenElement
-      );
-    }
-
-    function toggleFullscreen() {
-      if (isFullscreen()) {
-        const exit =
-          document.exitFullscreen ||
-          document.webkitExitFullscreen ||
-          document.msExitFullscreen;
-
-        if (exit) {
-          const promise = exit.call(document);
-
-          if (
-            promise &&
-            typeof promise.catch === 'function'
-          ) {
-            promise.catch(function () {});
-          }
-        }
-
-        return;
-      }
-
-      const req =
-        video.requestFullscreen ||
-        video.webkitRequestFullscreen ||
-        video.msRequestFullscreen;
-
-      if (req) {
-        const promise = req.call(video);
-
-        if (
-          promise &&
-          typeof promise.catch === 'function'
-        ) {
-          promise.catch(function () {});
-        }
-      }
-    }
-
-    function updateFsIcon() {
-      fsIcon.firstElementChild.setAttribute(
-        'd',
-        isFullscreen() ? ICON_EXIT : ICON_ENTER
-      );
-    }
-
-    document.addEventListener(
-      'fullscreenchange',
-      updateFsIcon
-    );
-
-    document.addEventListener(
-      'webkitfullscreenchange',
-      updateFsIcon
-    );
-
-    document.addEventListener(
-      'MSFullscreenChange',
-      updateFsIcon
-    );
-
-    fsBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      toggleFullscreen();
-    });
-
-    volSlider.addEventListener('input', function () {
-      const value = parseInt(
-        volSlider.value,
-        10
-      );
-
-      const volume =
-        Math.max(
-          0,
-          Math.min(100, value || 0)
-        ) / 100;
-
-      video.volume = volume;
-    });
-
-    function playNow() {
-      const promise = video.play();
-
-      if (
-        promise &&
-        typeof promise.catch === 'function'
-      ) {
-        promise.catch(function () {
-          status.textContent =
-            'Tap again to start.';
-
-          status.classList.remove('hidden');
-        });
-      }
-
-      return promise;
-    }
-
-    function createHls() {
-      return new Hls({
-        /*
-         * MediaMTX is serving LL-HLS.
-         */
-        lowLatencyMode: true,
-
-        /*
-         * Use the standard segment-count latency target.
-         *
-         * Do not force the player to sit only ~0.8s from
-         * the edge; doing so can increase stalls.
-         */
-        liveSyncDurationCount: 3,
-
-        /*
-         * Give the player some room before forcing it back
-         * to the target live position.
-         */
-        liveMaxLatencyDurationCount: 6,
-
-        /*
-         * IMPORTANT:
-         * Keep playback speed at normal 1.0x.
-         *
-         * Accelerating playback to catch the live edge can
-         * introduce A/V sync problems.
-         */
-        maxLiveSyncPlaybackRate: 1,
-
-        /*
-         * Small but not microscopic buffers.
-         */
-        backBufferLength: 5,
-        maxBufferLength: 3,
-        maxMaxBufferLength: 6,
-
-        /*
-         * Keep transmuxing in a worker.
-         */
-        enableWorker: true,
-
-        /*
-         * Start at the live position.
-         */
-        startPosition: -1,
-
-        /*
-         * Treat this as a real live stream.
-         */
-        liveDurationInfinity: false
-      });
-    }
-
-    function startPlayback() {
-      if (started) return;
-
-      started = true;
-      startOverlay.classList.add('hidden');
-
-      setupMediaSession();
-
-      /*
-       * Start muted for mobile autoplay policy.
-       */
-      video.muted = true;
-
-      status.textContent = 'Connecting...';
-      status.classList.remove('hidden');
-
-      if (Hls.isSupported()) {
-        hls = createHls();
-
-        hls.attachMedia(video);
-
-        hls.on(
-          Hls.Events.MEDIA_ATTACHED,
-          function () {
-            hls.loadSource(streamUrl);
-          }
-        );
-
-        hls.on(
-          Hls.Events.MANIFEST_PARSED,
-          function () {
-            soundBtn.hidden = false;
-            status.classList.add('hidden');
-
-            playNow();
-          }
-        );
-
-        hls.on(
-          Hls.Events.ERROR,
-          function (event, data) {
-            if (!data || !data.fatal) return;
-
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                status.textContent =
-                  'Network error. Retrying...';
-
-                status.classList.remove('hidden');
-
-                hls.startLoad();
-                break;
-
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                status.textContent =
-                  'Media error. Recovering...';
-
-                status.classList.remove('hidden');
-
-                hls.recoverMediaError();
-                break;
-
-              default:
-                status.textContent =
-                  'Playback failed.';
-
-                status.classList.remove('hidden');
-
-                if (hls) {
-                  hls.destroy();
-                  hls = null;
-                }
-
-                break;
-            }
-          }
-        );
-
-      } else if (
-        video.canPlayType(
-          'application/vnd.apple.mpegurl'
-        )
-      ) {
-        /*
-         * Native HLS path.
-         */
-        video.src = streamUrl;
-
-        video.addEventListener(
-          'loadedmetadata',
-          function () {
-            soundBtn.hidden = false;
-            status.classList.add('hidden');
-
-            playNow();
-          },
-          { once: true }
-        );
-
-      } else {
-        status.textContent =
-          'HLS is not supported in this browser.';
-
-        status.classList.remove('hidden');
-      }
-    }
-
-    startOverlay.addEventListener(
-      'click',
-      startPlayback
-    );
-
-    soundBtn.addEventListener(
-      'click',
-      function () {
-        /*
-         * Keep audio native.
-         */
-        video.volume =
-          (
-            parseInt(
-              volSlider.value,
-              10
-            ) || 100
-          ) / 100;
-
-        video.muted = false;
-
-        const promise = video.play();
-
-        if (
-          promise &&
-          typeof promise.catch === 'function'
-        ) {
-          promise.catch(function () {});
-        }
-
-        soundBtn.hidden = true;
-
-        if ('mediaSession' in navigator) {
-          try {
-            navigator.mediaSession.playbackState =
-              'playing';
-          } catch (e) {}
-        }
-      }
-    );
-
-    video.addEventListener(
-      'click',
-      function () {
-        if (!started) {
-          startPlayback();
-          return;
-        }
-
-        if (video.paused) {
-          playNow();
-        }
-      }
-    );
-
-    /*
-     * ------------------------------
-     * Chat
-     * ------------------------------
-     */
-
-    const chatMessages =
-      document.getElementById(
-        'chatMessages'
-      );
-
-    const chatForm =
-      document.getElementById(
-        'chatForm'
-      );
-
-    const nickInput =
-      document.getElementById(
-        'nickInput'
-      );
-
-    const msgInput =
-      document.getElementById(
-        'msgInput'
-      );
-
-    const sendBtn =
-      document.getElementById(
-        'sendBtn'
-      );
-
-    const chatDot =
-      document.getElementById(
-        'chatDot'
-      );
-
-    const chatStatus =
-      document.getElementById(
-        'chatStatus'
-      );
-
-    let chatWs = null;
-    let chatReconnectDelay =
-      CHAT_RECONNECT_MIN;
-
-    let chatReconnectTimer = null;
-
-    try {
-      const saved =
-        localStorage.getItem(
-          'chat_nick'
-        );
-
-      if (saved) {
-        nickInput.value =
-          saved.slice(
-            0,
-            NICK_MAX
-          );
-      }
-    } catch (e) {}
-
-    function setChatState(state) {
-      if (state === 'online') {
-        chatDot.classList.add('online');
-        chatStatus.textContent = 'online';
-
-        msgInput.disabled = false;
-        sendBtn.disabled = false;
-
-      } else if (state === 'connecting') {
-        chatDot.classList.remove('online');
-        chatStatus.textContent =
-          'connecting';
-
-        msgInput.disabled = true;
-        sendBtn.disabled = true;
-
-      } else {
-        chatDot.classList.remove('online');
-        chatStatus.textContent =
-          'offline';
-
-        msgInput.disabled = true;
-        sendBtn.disabled = true;
-      }
-    }
-
-    function pushLine(el) {
-      const nearBottom =
-        chatMessages.scrollHeight -
-        chatMessages.scrollTop -
-        chatMessages.clientHeight < 40;
-
-      chatMessages.appendChild(el);
-
-      while (
-        chatMessages.children.length >
-        MAX_CHAT_LINES
-      ) {
-        chatMessages.removeChild(
-          chatMessages.firstChild
-        );
-      }
-
-      if (nearBottom) {
-        chatMessages.scrollTop =
-          chatMessages.scrollHeight;
-      }
-    }
-
-    function appendSystem(text) {
-      const line =
-        document.createElement(
-          'div'
-        );
-
-      line.className =
-        'chat-line system';
-
-      line.textContent = text;
-
-      pushLine(line);
-    }
-
-    function appendMessage(
-      nick,
-      text,
-      ts
-    ) {
-      const line =
-        document.createElement(
-          'div'
-        );
-
-      line.className =
-        'chat-line';
-
-      const nickEl =
-        document.createElement(
-          'span'
-        );
-
-      nickEl.className = 'nick';
-      nickEl.textContent = nick;
-
-      const textEl =
-        document.createElement(
-          'span'
-        );
-
-      textEl.className = 'text';
-      textEl.textContent = text;
-
-      const tsEl =
-        document.createElement(
-          'span'
-        );
-
-      tsEl.className = 'ts';
-
-      tsEl.textContent =
-        new Date(ts).toLocaleTimeString(
-          undefined,
-          {
-            hour: '2-digit',
-            minute: '2-digit'
-          }
-        );
-
-      line.appendChild(nickEl);
-      line.appendChild(textEl);
-      line.appendChild(tsEl);
-
-      pushLine(line);
-    }
-
-    function connectChat() {
-      setChatState(
-        'connecting'
-      );
-
-      try {
-        chatWs =
-          new WebSocket(
-            CHAT_URL
-          );
-
-      } catch (e) {
-        scheduleReconnect();
-        return;
-      }
-
-      chatWs.onopen =
-        function () {
-          chatReconnectDelay =
-            CHAT_RECONNECT_MIN;
-
-          setChatState('online');
-          appendSystem(
-            'connected'
-          );
-        };
-
-      chatWs.onmessage =
-        function (ev) {
-          let m;
-
-          try {
-            m = JSON.parse(
-              ev.data
-            );
-          } catch (err) {
-            return;
-          }
-
-          if (
-            !m ||
-            typeof m.type !==
-              'string'
-          ) {
-            return;
-          }
-
-          if (
-            m.type === 'msg'
-          ) {
-            appendMessage(
-              String(
-                m.nick || ''
-              ),
-              String(
-                m.text || ''
-              ),
-              Number(m.ts) ||
-                Date.now()
-            );
-
-          } else if (
-            m.type === 'system'
-          ) {
-            appendSystem(
-              String(
-                m.text || ''
-              )
-            );
-          }
-        };
-
-      chatWs.onclose =
-        function () {
-          chatWs = null;
-
-          setChatState(
-            'offline'
-          );
-
-          scheduleReconnect();
-        };
-
-      chatWs.onerror =
-        function () {};
-    }
-
-    function scheduleReconnect() {
-      if (chatReconnectTimer) {
-        return;
-      }
-
-      chatReconnectTimer =
-        setTimeout(
-          function () {
-            chatReconnectTimer = null;
-            connectChat();
-          },
-          chatReconnectDelay
-        );
-
-      chatReconnectDelay =
-        Math.min(
-          chatReconnectDelay * 2,
-          CHAT_RECONNECT_MAX
-        );
-    }
-
-    chatForm.addEventListener(
-      'submit',
-      function (e) {
-        e.preventDefault();
-
-        if (
-          !chatWs ||
-          chatWs.readyState !==
-            WebSocket.OPEN
-        ) {
-          return;
-        }
-
-        const nick =
-          nickInput.value
-            .trim()
-            .slice(
-              0,
-              NICK_MAX
-            );
-
-        const text =
-          msgInput.value
-            .trim()
-            .slice(
-              0,
-              MSG_MAX
-            );
-
-        if (!nick) {
-          nickInput.focus();
-          return;
-        }
-
-        if (!text) {
-          return;
-        }
-
-        try {
-          localStorage.setItem(
-            'chat_nick',
-            nick
-          );
-        } catch (err) {}
-
-        chatWs.send(
-          JSON.stringify({
-            type: 'msg',
-            nick: nick,
-            text: text
-          })
-        );
-
-        msgInput.value = '';
-        msgInput.focus();
-      }
-    );
-
-    connectChat();
-  </script>
+
+<div class="layout">
+
+	<div class="video">
+		<div class="player">
+
+			<video id="video" playsinline preload="none" muted></video>
+
+			<button class="start" id="start">
+				<svg viewBox="0 0 24 24">
+					<path d="M8 5v14l11-7z"/>
+				</svg>
+				<span>Tap to play live</span>
+			</button>
+
+			<button class="fs" id="fs" title="Fullscreen">
+				<svg id="fsIcon" viewBox="0 0 24 24">
+					<path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+				</svg>
+			</button>
+
+		</div>
+
+		<div class="controls">
+			<button id="sound" hidden>Enable sound</button>
+			<label for="volume">Volume</label>
+			<input id="volume" type="range" min="0" max="100" value="100">
+		</div>
+
+		<div id="status" class="status"></div>
+	</div>
+
+	<div class="chat">
+
+		<div class="chat-header">
+			<span>Chat</span>
+			<span class="chat-state">
+				<span class="dot" id="dot"></span>
+				<span id="chatStatus">connecting</span>
+			</span>
+		</div>
+
+		<div class="messages" id="messages"></div>
+
+		<form class="chat-form" id="chatForm">
+			<input
+				class="name"
+				id="nick"
+				type="text"
+				placeholder="nick"
+				maxlength="20"
+			>
+
+			<input
+				class="message"
+				id="message"
+				type="text"
+				placeholder="message"
+				maxlength="300"
+				disabled
+			>
+
+			<button id="send" disabled>Send</button>
+		</form>
+
+	</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js/dist/hls.min.js"></script>
+
+<script>
+const STREAM = 'https://rtmp.br3xality.org/live/index.m3u8';
+const CHAT = 'wss://chat.br3xality.org/';
+
+const video = document.getElementById('video');
+const start = document.getElementById('start');
+const fs = document.getElementById('fs');
+const fsIcon = document.getElementById('fsIcon');
+const sound = document.getElementById('sound');
+const volume = document.getElementById('volume');
+const status = document.getElementById('status');
+
+const messages = document.getElementById('messages');
+const chatForm = document.getElementById('chatForm');
+const nick = document.getElementById('nick');
+const message = document.getElementById('message');
+const send = document.getElementById('send');
+const dot = document.getElementById('dot');
+const chatStatus = document.getElementById('chatStatus');
+
+let hls;
+let started = false;
+let ws;
+let reconnect = 1000;
+let reconnectTimer;
+
+video.volume = 1;
+video.muted = true;
+
+function playVideo(){
+	video.play().catch(function(){
+		status.textContent = 'Tap again to start.';
+		status.classList.remove('hidden');
+	});
+}
+
+function fullscreen(){
+	if(document.fullscreenElement){
+		document.exitFullscreen();
+	}else{
+		video.requestFullscreen?.();
+	}
+}
+
+fs.onclick = fullscreen;
+
+document.onfullscreenchange = function(){
+	const path = document.querySelector('#fsIcon path');
+
+	if(document.fullscreenElement){
+		path.setAttribute('d','M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z');
+	}else{
+		path.setAttribute('d','M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z');
+	}
+};
+
+volume.oninput = function(){
+	video.volume = volume.value / 100;
+};
+
+function startVideo(){
+	if(started) return;
+
+	started = true;
+	start.classList.add('hidden');
+	status.textContent = 'Connecting...';
+
+	video.muted = true;
+
+	if(Hls.isSupported()){
+		hls = new Hls({
+			lowLatencyMode:true,
+			liveSyncDurationCount:3,
+			liveMaxLatencyDurationCount:6,
+			maxLiveSyncPlaybackRate:1,
+			backBufferLength:5,
+			maxBufferLength:3,
+			maxMaxBufferLength:6,
+			enableWorker:true,
+			startPosition:-1,
+			liveDurationInfinity:false
+		});
+
+		hls.attachMedia(video);
+
+		hls.on(Hls.Events.MEDIA_ATTACHED,function(){
+			hls.loadSource(STREAM);
+		});
+
+		hls.on(Hls.Events.MANIFEST_PARSED,function(){
+			sound.hidden = false;
+			status.classList.add('hidden');
+			playVideo();
+		});
+
+		hls.on(Hls.Events.ERROR,function(_,data){
+			if(!data.fatal) return;
+
+			if(data.type === Hls.ErrorTypes.NETWORK_ERROR){
+				status.textContent = 'Network error. Retrying...';
+				hls.startLoad();
+			}else if(data.type === Hls.ErrorTypes.MEDIA_ERROR){
+				status.textContent = 'Media error. Recovering...';
+				hls.recoverMediaError();
+			}else{
+				status.textContent = 'Playback failed.';
+				hls.destroy();
+			}
+		});
+
+	}else if(video.canPlayType('application/vnd.apple.mpegurl')){
+		video.src = STREAM;
+
+		video.onloadedmetadata = function(){
+			sound.hidden = false;
+			status.classList.add('hidden');
+			playVideo();
+		};
+	}else{
+		status.textContent = 'HLS is not supported in this browser.';
+	}
+}
+
+start.onclick = startVideo;
+
+sound.onclick = function(){
+	video.volume = volume.value / 100;
+	video.muted = false;
+	playVideo();
+	sound.hidden = true;
+};
+
+video.onclick = function(){
+	if(!started){
+		startVideo();
+	}else if(video.paused){
+		playVideo();
+	}
+};
+
+
+/* chat */
+
+try{
+	nick.value = localStorage.getItem('chat_nick') || '';
+}catch(e){}
+
+function chatState(state){
+	if(state === 'online'){
+		dot.classList.add('online');
+		chatStatus.textContent = 'online';
+		message.disabled = false;
+		send.disabled = false;
+	}else if(state === 'connecting'){
+		dot.classList.remove('online');
+		chatStatus.textContent = 'connecting';
+		message.disabled = true;
+		send.disabled = true;
+	}else{
+		dot.classList.remove('online');
+		chatStatus.textContent = 'offline';
+		message.disabled = true;
+		send.disabled = true;
+	}
+}
+
+function addLine(el){
+	const bottom =
+		messages.scrollHeight -
+		messages.scrollTop -
+		messages.clientHeight < 40;
+
+	messages.appendChild(el);
+
+	while(messages.children.length > 200)
+		messages.firstChild.remove();
+
+	if(bottom)
+		messages.scrollTop = messages.scrollHeight;
+}
+
+function system(text){
+	const el = document.createElement('div');
+	el.className = 'line system';
+	el.textContent = text;
+	addLine(el);
+}
+
+function msg(name,text,time){
+	const el = document.createElement('div');
+	el.className = 'line';
+
+	el.innerHTML = '';
+
+	const n = document.createElement('span');
+	n.className = 'nick';
+	n.textContent = name;
+
+	const t = document.createElement('span');
+	t.textContent = text;
+
+	const ts = document.createElement('span');
+	ts.className = 'time';
+	ts.textContent = new Date(time).toLocaleTimeString([],{
+		hour:'2-digit',
+		minute:'2-digit'
+	});
+
+	el.append(n,t,ts);
+	addLine(el);
+}
+
+function connect(){
+	chatState('connecting');
+
+	try{
+		ws = new WebSocket(CHAT);
+	}catch(e){
+		retry();
+		return;
+	}
+
+	ws.onopen = function(){
+		reconnect = 1000;
+		chatState('online');
+		system('connected');
+	};
+
+	ws.onmessage = function(e){
+		let data;
+
+		try{
+			data = JSON.parse(e.data);
+		}catch(e){
+			return;
+		}
+
+		if(!data || typeof data.type !== 'string') return;
+
+		if(data.type === 'msg'){
+			msg(
+				String(data.nick || ''),
+				String(data.text || ''),
+				Number(data.ts) || Date.now()
+			);
+		}
+
+		if(data.type === 'system'){
+			system(String(data.text || ''));
+		}
+	};
+
+	ws.onclose = function(){
+		ws = null;
+		chatState('offline');
+		retry();
+	};
+}
+
+function retry(){
+	if(reconnectTimer) return;
+
+	reconnectTimer = setTimeout(function(){
+		reconnectTimer = null;
+		connect();
+	},reconnect);
+
+	reconnect = Math.min(reconnect * 2,30000);
+}
+
+chatForm.onsubmit = function(e){
+	e.preventDefault();
+
+	if(!ws || ws.readyState !== WebSocket.OPEN) return;
+
+	const name = nick.value.trim().slice(0,20);
+	const text = message.value.trim().slice(0,300);
+
+	if(!name){
+		nick.focus();
+		return;
+	}
+
+	if(!text) return;
+
+	try{
+		localStorage.setItem('chat_nick',name);
+	}catch(e){}
+
+	ws.send(JSON.stringify({
+		type:'msg',
+		nick:name,
+		text:text
+	}));
+
+	message.value = '';
+	message.focus();
+};
+
+connect();
+</script>
+
 </body>
 </html>
